@@ -10,5 +10,11 @@ ENV_FILE_ENCODING = "env_file_encoding"
 DEEPSEEK_MODEL = "deepseek-chat"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 
+# 角色
+USER_ROLE = "user"
+ASSISTANT_ROLE = "assistant"
+
 # 字符串常量
 EMPTY_STR = ""
+# 数字常量
+TEN_NUM = 10
