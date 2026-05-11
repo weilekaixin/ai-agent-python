@@ -1,0 +1,51 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Virtual environment
+.venv/
+venv/
+env/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment variables
+.env
+*.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# LangChain / LangGraph
+langchain_debug.log
+.graph_history/
+
+# Vector stores (local)
+chroma_db/
+vector_store/
+
+# Logs
+*.log
+logs/
+
+# Jupyter notebooks (if used for experiments)
+.ipynb_checkpoints/
+
+# uv
+uv.lock
+.python-version
+
+# Coverage
+htmlcov/
+.coverage
+coverage/
