@@ -42,10 +42,12 @@ logs/
 .ipynb_checkpoints/
 
 # uv
-uv.lock
 .python-version
 
 # Coverage
 htmlcov/
 .coverage
 coverage/
+
+# Claude code
+.claude
