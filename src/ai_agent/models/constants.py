@@ -13,8 +13,15 @@ DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 # 角色
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
+TOOL = "tool"
 
 # 字符串常量
 EMPTY_STR = ""
 # 数字常量
 TEN_NUM = 10
+
+# 业务字段
+NAME = "name"
+ARGS = "args"
+ID = "id"
+TOOL_CALL_ID = "tool_call_id"
