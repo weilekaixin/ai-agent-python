@@ -21,6 +21,7 @@ EMPTY_STR = ""
 TEN_NUM = 10
 
 # 业务字段
+MESSAGES = "messages"
 NAME = "name"
 ARGS = "args"
 ID = "id"

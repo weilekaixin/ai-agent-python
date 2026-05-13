@@ -21,3 +21,7 @@ def calculator(a: float, b: float, op: str) -> str:
     elif op == '/':
         return str(a / b)
     return "error"
+
+
+# 工具列表
+tools = [get_current_time, calculator]

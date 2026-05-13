@@ -1,18 +1,23 @@
 import asyncio
 
+from langchain.agents import create_agent
+from langchain_core.messages import HumanMessage
+
+from ai_agent.models.constants import MESSAGES
 from ai_agent.modules.llm.factory import get_llm
-from ai_agent.modules.tool.tools import get_current_time, calculator
+from ai_agent.modules.tool.tools import tools
 
 
-async def agent():
+async def test():
     # 获取大模型
     llm = get_llm()
-    # 注册工具
-    llm_with_tools = llm.bind_tools([get_current_time, calculator])
-    print(llm, llm_with_tools)
-    result = await llm_with_tools.ainvoke([{"role": "user", "content": "现在几点了？"}])
-    print(result)
+    # 创建react大模型实现tools_call
+    agent = create_agent(llm, tools)
+    # 组装单次上下文
+    result = await agent.ainvoke({MESSAGES: [HumanMessage(content="把当前时间的小时乘以十等于多少？")]})
+    # 输出大模型回复
+    print(result[MESSAGES][-1].content)
 
 
 if __name__ == '__main__':
-    asyncio.run(agent())
+    asyncio.run(test())
