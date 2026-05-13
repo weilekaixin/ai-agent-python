@@ -7,16 +7,18 @@ from ai_agent.modules.tool.tools import GetTimeTool
 
 async def test_agent_chat():
     agent = Agent()
-    reply = await agent.chat("你好")
-    print(f"AI: {reply}")
+    async for token in agent.chat("你好"):
+        print(token, end="", flush=True)
+    print()
 
 
 async def test_agent_with_tools():
     registry = ToolRegistry()
     registry.register(GetTimeTool())
     agent = Agent(registry=registry)
-    reply = await agent.chat("现在几点？")
-    print(f"AI: {reply}")
+    async for token in agent.chat("现在几点？"):
+        print(token, end="", flush=True)
+    print()
 
 
 if __name__ == "__main__":

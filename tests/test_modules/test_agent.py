@@ -70,5 +70,23 @@ async def test_chat_with_tools_and_rag():
     print("\n")
 
 
+async def test_interactive():
+    """交互式对话 — 测试上下文记忆"""
+    agent = Agent(
+        registry=build_registry(),
+        retriever=build_retriever()
+    )
+    print("=== 交互式对话（输入 /exit 退出）===\n")
+    while True:
+        question = input("\n你：")
+        if question.strip() == "/exit":
+            print("再见！")
+            break
+        print("AI：", end="", flush=True)
+        async for token in agent.chat(question):
+            print(token, end="", flush=True)
+        print()  # 换行
+
+
 if __name__ == "__main__":
-    asyncio.run(test_chat_with_tools_and_rag())
+    asyncio.run(test_interactive())
