@@ -7,10 +7,10 @@ from ai_agent.core.factory import create_agent
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(application: FastAPI):
     # 启动：初始化 Agent（加载模型、索引知识库）
     print("[启动] 加载 Embedding 模型...")
-    app.state.agent = create_agent()
+    application.state.agent = create_agent()
     print("[启动] Agent 就绪，监听端口 8000")
     yield
     # 关闭：清理资源
