@@ -27,5 +27,5 @@ ID = "id"
 TOOL_CALL_ID = "tool_call_id"
 
 # 系统提示词
-RAG_SYSTEM_PROMPT = "基于以下资料回答问题："
+RAG_SYSTEM_PROMPT = "基于以下资料回答问题。如果资料中没有相关信息，你可以根据自己的知识回答："
 QUESTION = "\n问题："

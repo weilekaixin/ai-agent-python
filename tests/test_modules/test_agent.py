@@ -1,10 +1,10 @@
-import os
 import asyncio
+import os
 
 from ai_agent.core.agent import Agent
-from ai_agent.modules.rag.splitter import RecursiveSplitter
 from ai_agent.modules.rag.embedder import Embedder
 from ai_agent.modules.rag.retriever import Retriever
+from ai_agent.modules.rag.splitter import RecursiveSplitter
 from ai_agent.modules.tool.registry import ToolRegistry
 from ai_agent.modules.tool.tools import GetTimeTool, CalculatorTool
 
@@ -21,7 +21,7 @@ def build_registry() -> ToolRegistry:
 def build_retriever() -> Retriever:
     base_dir = os.path.dirname(os.path.dirname(__file__))
     project_dir = os.path.dirname(base_dir)
-    with open(os.path.join(project_dir, "data", "sample.txt"), encoding="utf-8") as f:
+    with open(os.path.join(project_dir, "doc", "sample.txt"), encoding="utf-8") as f:
         text = f.read()
     splitter = RecursiveSplitter(chunk_size=50, chunk_overlap=10)
     chunks = splitter.split(text)

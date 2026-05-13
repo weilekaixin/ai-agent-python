@@ -11,7 +11,7 @@ async def test_rag():
     # 1. 读文件
     base_dir = os.path.dirname(os.path.dirname(__file__))  # tests/
     project_dir = os.path.dirname(base_dir)  # 项目根目录
-    with open(os.path.join(project_dir, "data", "sample.txt"), encoding="utf-8") as f:
+    with open(os.path.join(project_dir, "doc", "sample.txt"), encoding="utf-8") as f:
         text = f.read()
 
     # 2. 切片
@@ -39,7 +39,7 @@ async def test_agent_with_rag():
     # 1. 读文件
     base_dir = os.path.dirname(os.path.dirname(__file__))
     project_dir = os.path.dirname(base_dir)
-    with open(os.path.join(project_dir, "data", "sample.txt"), encoding="utf-8") as f:
+    with open(os.path.join(project_dir, "doc", "sample.txt"), encoding="utf-8") as f:
         text = f.read()
 
     # 2. 切片
