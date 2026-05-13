@@ -10,6 +10,7 @@ dependencies = [
     "langgraph>=1.2.0",
     "pydantic-settings>=2.14.1",
     "sentence-transformers>=5.5.0",
+    "pydantic>=2.13.4",
 ]
 
 [project.optional-dependencies]
