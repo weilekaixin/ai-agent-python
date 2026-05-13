@@ -30,10 +30,6 @@ ID = "id"
 TOOL_CALL_ID = "tool_call_id"
 TEXT_EVENT_STREAM = "text/event-stream"
 
-# 系统提示词
-RAG_SYSTEM_PROMPT = "基于以下资料回答问题。如果资料中没有相关信息，你可以根据自己的知识回答："
-QUESTION = "\n问题："
-
 # HTTP状态码
 HTTP_503 = 503
 HTTP_400 = 400
