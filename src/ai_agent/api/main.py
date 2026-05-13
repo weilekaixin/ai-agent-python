@@ -3,15 +3,14 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from ai_agent.api.routes.chat import router
-from ai_agent.core.factory import create_agent
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    # 启动：初始化 Agent（加载模型、索引知识库）
-    print("[启动] 加载 Embedding 模型...")
-    application.state.agent = create_agent()
-    print("[启动] Agent 就绪，监听端口 8000")
+    # TODO: v1.0 — 使用 LangChain init_chat_model 初始化 LLM
+    # TODO: v1.0 — 使用 LangGraph create_react_agent 创建 Agent
+    print("[启动] Agent 待实现...")
+    application.state.agent = None
     yield
     # 关闭：清理资源
     print("[关闭] 服务停止")

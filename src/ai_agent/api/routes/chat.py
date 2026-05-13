@@ -9,7 +9,11 @@ router = APIRouter()
 
 @router.post("/chat")
 async def chat(request: Request, body: ChatRequest):
+    # TODO: v1.0 — 使用 agent.astream_events 流式响应
     agent = request.app.state.agent
+    if agent is None:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "Agent 未初始化"}, status_code=503)
     return StreamingResponse(
         sse_format(agent.chat(body.message)),
         media_type="text/event-stream"
