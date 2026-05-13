@@ -2,19 +2,17 @@ from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 
 from ai_agent.api.schemas.chat import ChatRequest
+from ai_agent.api.schemas.common import fail
+from ai_agent.models.constants import TEXT_EVENT_STREAM, HTTP_503, ERROR_MESSAGE_AGENT_NOT_INIT
 from ai_agent.utils.sse import sse_format
+from ai_agent.utils.stream import token_stream
 
 router = APIRouter()
 
 
 @router.post("/chat")
 async def chat(request: Request, body: ChatRequest):
-    # TODO: v1.0 — 使用 agent.astream_events 流式响应
     agent = request.app.state.agent
     if agent is None:
-        from fastapi.responses import JSONResponse
-        return JSONResponse({"error": "Agent 未初始化"}, status_code=503)
-    return StreamingResponse(
-        sse_format(agent.chat(body.message)),
-        media_type="text/event-stream"
-    )
+        return fail(HTTP_503, ERROR_MESSAGE_AGENT_NOT_INIT, HTTP_503)
+    return StreamingResponse(sse_format(token_stream(agent, body.message)), media_type=TEXT_EVENT_STREAM)

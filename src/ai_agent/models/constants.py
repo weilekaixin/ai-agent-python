@@ -19,14 +19,24 @@ TOOL_ROLE = "tool"
 EMPTY_STR = ""
 # 数字常量
 TEN_NUM = 10
+ZERO = 0
 
 # 业务字段
 MESSAGES = "messages"
+SUCCESS = "success"
 NAME = "name"
 ARGS = "args"
 ID = "id"
 TOOL_CALL_ID = "tool_call_id"
+TEXT_EVENT_STREAM = "text/event-stream"
 
 # 系统提示词
 RAG_SYSTEM_PROMPT = "基于以下资料回答问题。如果资料中没有相关信息，你可以根据自己的知识回答："
 QUESTION = "\n问题："
+
+# HTTP状态码
+HTTP_503 = 503
+HTTP_400 = 400
+HTTP_200 = 200
+
+ERROR_MESSAGE_AGENT_NOT_INIT = "Agent未初始化！"
