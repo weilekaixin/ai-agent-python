@@ -18,7 +18,10 @@ class DeepSeekClient(LLMClient):
         )
 
     async def chat(self, messages: list[Message | ToolCallMessage], tools: list[dict] | None = None) -> tuple[str, list[dict]]:
-        response = await self.client.ainvoke(messages, tools=tools)
+        if tools:
+            response = await self.client.ainvoke(messages, tools=tools)
+        else:
+            response = await self.client.ainvoke(messages)
         if response.tool_calls:
             return "", [{"name": tc["name"], "args": tc["args"], "id": tc["id"]} for tc in response.tool_calls]
         return str(response.content or ""), []

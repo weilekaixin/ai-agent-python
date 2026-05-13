@@ -13,7 +13,7 @@ DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 # 角色
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
-TOOL = "tool"
+TOOL_ROLE = "tool"
 
 # 字符串常量
 EMPTY_STR = ""
@@ -25,3 +25,7 @@ NAME = "name"
 ARGS = "args"
 ID = "id"
 TOOL_CALL_ID = "tool_call_id"
+
+# 系统提示词
+RAG_SYSTEM_PROMPT = "基于以下资料回答问题："
+QUESTION = "\n问题："
