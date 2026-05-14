@@ -30,9 +30,4 @@ ID = "id"
 TOOL_CALL_ID = "tool_call_id"
 TEXT_EVENT_STREAM = "text/event-stream"
 
-# HTTP状态码
-HTTP_503 = 503
-HTTP_400 = 400
-HTTP_200 = 200
-
 ERROR_MESSAGE_AGENT_NOT_INIT = "Agent未初始化！"
