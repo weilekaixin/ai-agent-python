@@ -20,6 +20,8 @@ dependencies = [
     "redis>=7.4.0",
     "pymilvus>=2.6.13",
     "langchain-milvus>=0.3.3",
+    "sqlmodel>=0.0.38",
+    "psycopg[binary]>=3.3.4",
 ]
 
 [project.optional-dependencies]
