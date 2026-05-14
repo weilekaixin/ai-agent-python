@@ -1,12 +1,12 @@
-from collections.abc import AsyncGenerator
+from typing import AsyncGenerator
 
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import BaseMessage
 
 
-async def token_stream(agent, message: str) -> AsyncGenerator[str, None]:
+async def token_stream(agent, messages: list[BaseMessage]) -> AsyncGenerator[str, None]:
     try:
         async for event in agent.astream_events(
-                {"messages": [HumanMessage(content=message)]},
+                {"messages": messages},
                 version="v2",
         ):
             if event["event"] == "on_chat_model_stream":

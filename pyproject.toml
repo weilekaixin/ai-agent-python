@@ -17,6 +17,7 @@ dependencies = [
     "pydantic-settings>=2.14.1",
     "sentence-transformers>=5.4.1",
     "pydantic>=2.13.4",
+    "redis>=7.4.0",
 ]
 
 [project.optional-dependencies]

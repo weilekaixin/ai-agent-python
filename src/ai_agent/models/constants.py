@@ -14,12 +14,16 @@ DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
 TOOL_ROLE = "tool"
+AI = "ai"
+HUMAN = "human"
 
 # 字符串常量
 EMPTY_STR = ""
+LOCALHOST = "localhost"
 # 数字常量
-TEN_NUM = 10
-ZERO = 0
+NUM_0 = 0
+NUM_10 = 10
+NUM_6379 = 6379
 
 # 业务字段
 MESSAGES = "messages"

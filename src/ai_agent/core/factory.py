@@ -1,6 +1,8 @@
 from langchain.agents import create_agent
+from langchain_core.messages import HumanMessage, AIMessage
 
 from ai_agent.models.prompts import DEFAULT, RAG, QUESTION
+from ai_agent.modules.cache.history import get_history
 from ai_agent.modules.llm.factory import get_llm
 from ai_agent.modules.rag.retriever import get_retriever
 from ai_agent.modules.rag.store import build_vector_store
@@ -25,3 +27,19 @@ def build_rag_message(retriever, user_message: str) -> str:
     docs = retriever.invoke(user_message)
     context = "\n".join([doc.page_content for doc in docs])
     return f"{RAG}\n{context}{QUESTION}{user_message}"
+
+
+def build_messages_with_history(session_id: str, user_message: str, retriever) -> list:
+    """取历史 + 拼 RAG 消息，返回完整消息列表"""
+    history = get_history(session_id)
+    # 把历史转成 LangChain 消息格式
+    messages = []
+    for msg in history:
+        if msg["role"] == "human":
+            messages.append(HumanMessage(content=msg["content"]))
+        elif msg["role"] == "ai":
+            messages.append(AIMessage(content=msg["content"]))
+    # 加上当前问题（带 RAG 检索结果）
+    current = build_rag_message(retriever, user_message)
+    messages.append(HumanMessage(content=current))
+    return messages

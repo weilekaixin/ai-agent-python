@@ -1,0 +1,2 @@
+MESSAGE_HISTORY = "message:history:"
+MESSAGE_HISTORY_TIME = 604800

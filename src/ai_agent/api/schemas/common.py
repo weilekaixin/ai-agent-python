@@ -4,11 +4,11 @@ from fastapi import status
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from ai_agent.models.constants import SUCCESS, ZERO
+from ai_agent.models.constants import SUCCESS, NUM_0
 
 
 class ApiResponse(BaseModel):
-    code: int = ZERO
+    code: int = NUM_0
     message: str = SUCCESS
     data: Any = None
 
