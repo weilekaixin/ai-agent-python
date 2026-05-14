@@ -33,5 +33,6 @@ ARGS = "args"
 ID = "id"
 TOOL_CALL_ID = "tool_call_id"
 TEXT_EVENT_STREAM = "text/event-stream"
+MODELS = "models"
 
 ERROR_MESSAGE_AGENT_NOT_INIT = "Agent未初始化！"

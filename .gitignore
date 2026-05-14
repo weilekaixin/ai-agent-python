@@ -51,3 +51,6 @@ coverage/
 
 # Claude code
 .claude
+
+# 向量化模型
+models
