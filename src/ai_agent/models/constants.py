@@ -20,10 +20,12 @@ HUMAN = "human"
 # 字符串常量
 EMPTY_STR = ""
 LOCALHOST = "localhost"
+ROOT = "root"
 # 数字常量
 NUM_0 = 0
 NUM_10 = 10
 NUM_6379 = 6379
+NUM_19530 = 19530
 
 # 业务字段
 MESSAGES = "messages"
