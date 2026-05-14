@@ -1,8 +1,10 @@
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
+from urllib3 import request
 
 from ai_agent.api.schemas.chat import ChatRequest
 from ai_agent.api.schemas.common import fail
+from ai_agent.core.factory import build_rag_message
 from ai_agent.models.constants import TEXT_EVENT_STREAM, HTTP_503, ERROR_MESSAGE_AGENT_NOT_INIT
 from ai_agent.utils.sse import sse_format
 from ai_agent.utils.stream import token_stream
@@ -11,8 +13,10 @@ router = APIRouter()
 
 
 @router.post("/chat")
-async def chat(request: Request, body: ChatRequest):
-    agent = request.app.state.agent
+async def chat(query: Request, body: ChatRequest):
+    agent = query.app.state.agent
+    retriever = query.app.state.retriever
     if agent is None:
         return fail(HTTP_503, ERROR_MESSAGE_AGENT_NOT_INIT, HTTP_503)
-    return StreamingResponse(sse_format(token_stream(agent, body.message)), media_type=TEXT_EVENT_STREAM)
+    message = build_rag_message(retriever, body.message)
+    return StreamingResponse(sse_format(token_stream(agent, message)), media_type=TEXT_EVENT_STREAM)

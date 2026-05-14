@@ -3,12 +3,13 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from ai_agent.api.routes.chat import router
-from ai_agent.core.factory import create_agent_app
+from ai_agent.core.factory import create_agent_app, create_rag_retriever
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
     application.state.agent = create_agent_app()
+    application.state.retriever = create_rag_retriever("doc/sample.txt")
     print("[启动] Agent 就绪")
     yield
     print("[关闭] 服务停止")
