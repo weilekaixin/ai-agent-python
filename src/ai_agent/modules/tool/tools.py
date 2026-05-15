@@ -1,43 +1,49 @@
-from ai_agent.modules.tool.base import Tool
+from datetime import datetime
+
+from langchain_core.tools import tool
+from tavily import TavilyClient
+
+from ai_agent.config.settings import settings
 
 
-class GetTimeTool(Tool):
+@tool
+def get_current_time() -> str:
     """获取实时时间"""
-    name = "get_current_time"
-    description = "获取实时时间"
-
-    def execute(self, **kwargs) -> str:
-        from datetime import datetime
-        return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
 
-class CalculatorTool(Tool):
+@tool
+def calculator(a: float, b: float, op: str) -> str:
     """四则运算"""
-    name = "calculator"
-    description = "四则运算"
+    if op == '+':
+        return str(a + b)
+    elif op == '-':
+        return str(a - b)
+    elif op == '*':
+        return str(a * b)
+    elif op == '/':
+        return str(a / b)
+    return "error"
 
-    @property
-    def args(self) -> dict:
-        return {
-            "type": "object",
-            "properties": {
-                "a": {"type": "number", "description": "第一个数字"},
-                "b": {"type": "number", "description": "第二个数字"},
-                "op": {"type": "string", "description": "运算符"},
-            },
-            "required": ["a", "b", "op"]
-        }
 
-    def execute(self, **kwargs) -> str:
-        a = kwargs["a"]
-        b = kwargs["b"]
-        op = kwargs["op"]
-        if op == "+":
-            return a + b
-        if op == "-":
-            return a - b
-        if op == "*":
-            return a * b
-        if op == "/":
-            return a / b
-        return "error"
+@tool
+def web_search(query: str) -> str:
+    """搜索网页获取最新信息"""
+    try:
+        tavily = TavilyClient(api_key=settings.tavily_api_key)
+        response = tavily.search(query, max_results=3)
+
+        if not response.get("results"):
+            return "未找到相关结果"
+
+        output = []
+        for i, r in enumerate(response["results"], 1):
+            output.append(f"{i}，{r["title"]}\n{["content"]}\n")
+        result = "\n".join(output)
+        return result
+    except Exception as e:
+        return f"搜索失败：{str(e)}"
+
+
+# 工具列表
+tools = [get_current_time, calculator]
