@@ -38,7 +38,7 @@ def web_search(query: str) -> str:
 
         output = []
         for i, r in enumerate(response["results"], 1):
-            output.append(f"{i}，{r["title"]}\n{["content"]}\n")
+            output.append(f"{i}，{r["title"]}\n{r["content"]}\n")
         result = "\n".join(output)
         return result
     except Exception as e:
@@ -46,4 +46,4 @@ def web_search(query: str) -> str:
 
 
 # 工具列表
-tools = [get_current_time, calculator]
+tools = [get_current_time, calculator, web_search]
