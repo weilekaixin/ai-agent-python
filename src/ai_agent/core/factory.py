@@ -1,25 +1,21 @@
-from langchain.agents import create_agent
 from langchain_community.cache import RedisCache
 from langchain_core.globals import set_llm_cache
 from langchain_core.messages import HumanMessage, AIMessage
 
-from ai_agent.models.prompts import DEFAULT, RAG, QUESTION
+from ai_agent.core.graph import create_graph
+from ai_agent.models.prompts import RAG, QUESTION
 from ai_agent.modules.cache.client import get_redis_client
 from ai_agent.modules.cache.history import get_history
-from ai_agent.modules.llm.factory import get_llm
 from ai_agent.modules.rag.retriever import get_retriever
 from ai_agent.modules.rag.store import build_vector_store
-from ai_agent.modules.tool.tools import tools
 
 
 def create_agent_app():
     """ReAct"""
     # 开启缓存命中
     set_llm_cache(RedisCache(redis_=get_redis_client()))
-
-    llm = get_llm()
-    agent = create_agent(llm, tools, system_prompt=DEFAULT)
-    return agent
+    # 返回流程图
+    return create_graph()
 
 
 def create_rag_retriever(file_path: str):
