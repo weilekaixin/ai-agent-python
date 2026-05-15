@@ -13,7 +13,7 @@ def get_history(session_id: str) -> list:
     return [json.loads(item) for item in items]
 
 
-def save_message(session_id: str, role: str, content: str) -> None:
+def save_message_to_redis(session_id: str, role: str, content: str) -> None:
     """追加单条消息到 Redis List"""
     key = f"{MESSAGE_HISTORY}{session_id}"
     redis_client.rpush(key, json.dumps({"role": role, "content": content}, ensure_ascii=False))  # type: ignore
