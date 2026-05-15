@@ -30,8 +30,8 @@ def should_continue(state: AgentState):
         1 for msg in state["messages"]
         if hasattr(msg, "tool_calls") and msg.tool_calls
     )
-    # 最多调 3 次工具
-    if tool_call_count >= 3:
+    # 最多调 5 次工具
+    if tool_call_count >= 5:
         return END
     # 如果大模型输出tool_calls说明需要使用工具
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:

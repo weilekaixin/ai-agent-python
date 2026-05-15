@@ -23,7 +23,7 @@ class Settings(BaseSettings):
     postgres_database: str = AI_AGENT
     postgres_username: str = POSTGRES
     postgres_password: str = EMPTY_STR
-    tavily_api_key: str = EMPTY_STR
+    search_url: str = EMPTY_STR
 
     @property
     def postgres_url(self) -> str:
