@@ -25,15 +25,16 @@ async def chat(query: Request, body: ChatRequest):
 
     async def stream_and_save():
         ai_response = []
-        async for token in token_stream(agent, messages):
+        session_id = body.session_id
+        async for token in token_stream(agent, messages, session_id):
             ai_response.append(token)
             yield token
 
         full_response = EMPTY_STR.join(ai_response)
         # 双写 redis热数据 和 postgreSQL冷数据
-        save_message_to_redis(body.session_id, HUMAN, body.message)
-        save_message_to_redis(body.session_id, AI, full_response)
-        save_message_to_db(body.session_id, HUMAN, body.message)
-        save_message_to_db(body.session_id, AI, full_response)
+        save_message_to_redis(session_id, HUMAN, body.message)
+        save_message_to_redis(session_id, AI, full_response)
+        save_message_to_db(session_id, HUMAN, body.message)
+        save_message_to_db(session_id, AI, full_response)
 
     return StreamingResponse(sse_format(stream_and_save()), media_type=TEXT_EVENT_STREAM)

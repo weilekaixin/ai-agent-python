@@ -1,10 +1,14 @@
 from typing import TypedDict, Annotated
 
 from langchain_core.messages import BaseMessage
+from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.constants import END
 from langgraph.graph import StateGraph, add_messages
 from langgraph.prebuilt import ToolNode
+from psycopg.rows import dict_row
+from psycopg_pool import AsyncConnectionPool
 
+from ai_agent.config.settings import settings
 from ai_agent.modules.llm.factory import get_llm
 from ai_agent.modules.tool.tools import tools
 
@@ -59,5 +63,11 @@ def create_graph():
     )
     # 设置出口
     workflow.add_edge("tools", "llm")
+    # PostgreSQL checkpointer 连接时需去掉psycopg
+    # 例如agent在运行到第三步系统宕机了 存入checkpointer可以恢复状态
+    pg_url = settings.postgres_url.replace("postgresql+psycopg://", "postgresql://")
+    pool = AsyncConnectionPool(conninfo=pg_url, max_size=20, kwargs={"autocommit": True, "row_factory": dict_row})
+    checkpointer = AsyncPostgresSaver(pool)  # type: ignore
+    checkpointer.setup()  # 第一次运行会自动创建表
     # 编译成可执行的图
-    return workflow.compile()
+    return workflow.compile(checkpointer=checkpointer)
