@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     postgres_username: str = POSTGRES
     postgres_password: str = EMPTY_STR
     search_url: str = EMPTY_STR
+    smtp_host: str = EMPTY_STR
+    smtp_port: int = 587
+    smtp_username: str = EMPTY_STR
+    smtp_password: str = EMPTY_STR
 
     @property
     def postgres_url(self) -> str:

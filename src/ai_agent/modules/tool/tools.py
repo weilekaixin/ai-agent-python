@@ -3,6 +3,7 @@ from datetime import datetime
 from langchain_core.tools import tool
 
 from ai_agent.config.settings import settings
+from ai_agent.utils.email_sender import send_email as _send_email
 from ai_agent.utils.scraper import scrape_search
 
 
@@ -35,5 +36,20 @@ def web_search(query: str) -> str:
         return f"搜索失败：{str(e)}"
 
 
+@tool
+def send_email(to: str, subject: str, body: str) -> str:
+    """发送邮件。这是一个敏感操作，会真实发送邮件。
+
+    Args:
+        to: 收件人邮箱
+        subject: 邮件主题
+        body: 邮件正文
+    """
+    try:
+        return _send_email(to, subject, body)
+    except Exception as e:
+        return f"邮件发送失败：{str(e)}"
+
+
 # 工具列表
-tools = [get_current_time, calculator, web_search]
+tools = [get_current_time, calculator, web_search, send_email]

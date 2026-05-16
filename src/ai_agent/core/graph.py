@@ -70,4 +70,4 @@ def create_graph():
     checkpointer = AsyncPostgresSaver(pool)  # type: ignore
     checkpointer.setup()  # 第一次运行会自动创建表
     # 编译成可执行的图
-    return workflow.compile(checkpointer=checkpointer)
+    return workflow.compile(checkpointer=checkpointer, interrupt_before=["tools"])

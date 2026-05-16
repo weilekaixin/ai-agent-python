@@ -1,12 +1,6 @@
-from typing import AsyncGenerator
-
-from langchain_core.messages import BaseMessage
-
-
-async def token_stream(agent, messages: list[BaseMessage], session_id: str) -> AsyncGenerator[str, None]:
+async def token_stream(graph, messages, config):
     try:
-        config = {"configurable": {"thread_id": session_id}}
-        async for event in agent.astream_events(
+        async for event in graph.astream_events(
                 {"messages": messages},
                 config=config,
                 version="v2",
