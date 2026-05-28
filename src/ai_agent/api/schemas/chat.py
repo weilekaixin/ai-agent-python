@@ -10,4 +10,5 @@ class ChatRequest(BaseModel):
 class ResumeRequest(BaseModel):
     """确认敏感操作"""
     session_id: str
+    thread_id: str
     approved: bool  # True 同意，False 拒绝

@@ -1,3 +1,7 @@
+import json
+from uuid import uuid4
+from langchain_core.messages import HumanMessage
+
 from fastapi import APIRouter, Request, status
 from fastapi.responses import StreamingResponse
 
@@ -9,7 +13,6 @@ from ai_agent.modules.cache.history import save_message_to_redis
 from ai_agent.modules.db.dao import save_message_to_db
 from ai_agent.utils.sse import sse_format
 from ai_agent.utils.stream import token_stream
-import json
 
 router = APIRouter()
 
@@ -22,6 +25,7 @@ async def chat(query: Request, body: ChatRequest):
         return fail(status.HTTP_503_SERVICE_UNAVAILABLE, ERROR_MESSAGE_AGENT_NOT_INIT,
                     status.HTTP_503_SERVICE_UNAVAILABLE)
     # 清理上次残留的 checkpoint（防止 resume 的 finally 未执行完的竞态条件）
+    thread_id = str(uuid4())
     config = {"configurable": {"thread_id": body.session_id}}
     try:
         state = await agent.aget_state(config)
@@ -47,7 +51,8 @@ async def chat(query: Request, body: ChatRequest):
                     "type": "interrupt",
                     "tool": tool_call["name"],
                     "args": tool_call["args"],
-                    "tool_call_id": tool_call["id"]
+                    "tool_call_id": tool_call["id"],
+                    "thread_id": thread_id
                 }
                 yield f"__INTERRUPT__:{json.dumps(interrupt_data, ensure_ascii=False)}"
             return  # 暂停时不保存历史
@@ -69,7 +74,7 @@ async def resume(query: Request, body: ResumeRequest):
         return fail(status.HTTP_503_SERVICE_UNAVAILABLE, ERROR_MESSAGE_AGENT_NOT_INIT,
                     status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    config = {"configurable": {"thread_id": body.session_id}}
+    config = {"configurable": {"thread_id": body.thread_id}}
 
     # 如果拒绝
     if not body.approved:
@@ -103,7 +108,12 @@ async def resume(query: Request, body: ResumeRequest):
         # 保存完整历史
         full_response = EMPTY_STR.join(ai_response)
         full_state = await agent.aget_state(config)
-        user_message = full_state.values["messages"][0].content  # 第一条是用户问题
+
+        raw = next(
+            msg.content for msg in full_state.values["messages"]
+            if isinstance(msg, HumanMessage)
+        )
+        user_message = raw if isinstance(raw, str) else str(raw)
 
         save_message_to_redis(body.session_id, HUMAN, user_message)
         save_message_to_redis(body.session_id, AI, full_response)
