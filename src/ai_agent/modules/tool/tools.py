@@ -43,7 +43,7 @@ def send_email(to: str, subject: str, body: str) -> str:
     """发送邮件。这是一个敏感操作，会真实发送邮件。
 
     Args:
-        to: 收件人邮箱
+        to: 收件人邮筱
         subject: 邮件主题
         body: 邮件正文
     """
@@ -51,6 +51,20 @@ def send_email(to: str, subject: str, body: str) -> str:
         return _send_email(to, subject, body)
     except Exception as e:
         return f"邮件发送失败：{str(e)}"
+
+
+@tool
+def get_skill_guide(skill_name: str) -> str:
+    """获取指定技能的完整执行指南。当需要详细了解如何执行某项复杂技能时调用。
+
+    Args:
+        skill_name: 技能名称，如 web_research 或 report_writing
+    """
+    from ai_agent.modules.skill.loader import load_skill
+    content = load_skill(skill_name)
+    if not content:
+        return f"未找到技能: {skill_name}"
+    return content
 
 
 def make_search_tool(retriever):
@@ -68,5 +82,4 @@ def make_search_tool(retriever):
     return search_knowledge_base
 
 
-# 静态工具列表（不含需要 retriever 的 search_knowledge_base）
-tools = [get_current_time, calculator, web_search, send_email]
+tools = [get_current_time, calculator, web_search, send_email, get_skill_guide]

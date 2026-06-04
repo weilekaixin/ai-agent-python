@@ -13,7 +13,8 @@ from psycopg_pool import AsyncConnectionPool
 from ai_agent.config.settings import settings, BASE_DIR
 from ai_agent.modules.llm.factory import get_llm
 from ai_agent.modules.memory.auto_memory import load_auto_memory
-from ai_agent.modules.tool.tools import get_current_time, calculator, web_search, send_email, make_search_tool
+from ai_agent.modules.skill.loader import get_skills_summary
+from ai_agent.modules.tool.tools import get_current_time, calculator, web_search, send_email, make_search_tool, get_skill_guide
 
 SENSITIVE_TOOLS = {"send_email"}
 
@@ -30,13 +31,24 @@ def _load_agents_md() -> str:
 
 
 def _build_system_prompt() -> str:
-    """AGENTS.md (static harness) + auto_memory.md (dynamic cross-session learnings)."""
-    return _load_agents_md() + load_auto_memory()
+    """Compose system prompt from three layers:
+    1. AGENTS.md  — static harness rules
+    2. Skills registry — what skills the agent can load on demand
+    3. Auto Memory — dynamic cross-session learnings
+    """
+    parts = [_load_agents_md()]
+    skills = get_skills_summary()
+    if skills:
+        parts.append(f"\n\n{skills}")
+    memory = load_auto_memory()
+    if memory:
+        parts.append(memory)
+    return "".join(parts)
 
 
 async def create_graph(retriever):
     search_tool = make_search_tool(retriever)
-    safe_tools = [get_current_time, calculator, web_search, search_tool]
+    safe_tools = [get_current_time, calculator, web_search, search_tool, get_skill_guide]
     sensitive_tools = [send_email]
     all_tools = safe_tools + sensitive_tools
 
@@ -44,7 +56,7 @@ async def create_graph(retriever):
 
     def llm_node(state: AgentState):
         messages = list(state["messages"])
-        # Re-read at conversation start so new auto-memory entries are picked up without restart
+        # Re-read at conversation start: picks up latest auto-memory without restart
         if not any(isinstance(m, SystemMessage) for m in messages):
             prompt = _build_system_prompt()
             if prompt:
