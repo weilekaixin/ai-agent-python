@@ -30,8 +30,12 @@ class Settings(BaseSettings):
     api_key: str = EMPTY_STR
     log_level: str = "INFO"
     rate_limit_enabled: bool = True
-    history_max_pairs: int = 20  # Keep last N conversation pairs to avoid context overflow
-    max_request_size_kb: int = 512  # Maximum allowed Content-Length in kilobytes
+    history_max_pairs: int = 20
+    max_request_size_kb: int = 512
+    # JWT authentication (optional; disabled by default, set jwt_enabled=true to activate)
+    jwt_enabled: bool = False
+    jwt_secret: str = EMPTY_STR
+    jwt_algorithm: str = "HS256"
 
     @property
     def postgres_url(self) -> str:

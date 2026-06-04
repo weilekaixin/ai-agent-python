@@ -10,6 +10,7 @@ from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import text
 
 from ai_agent.api.middleware.auth import ApiKeyMiddleware, RequestIdMiddleware
+from ai_agent.api.middleware.jwt_auth import JwtAuthMiddleware
 from ai_agent.api.middleware.rate_limit import RateLimitMiddleware
 from ai_agent.api.middleware.request_size import RequestSizeMiddleware
 from ai_agent.api.middleware.response_time import ResponseTimeMiddleware
@@ -64,10 +65,13 @@ Instrumentator(
 
 # Middleware execution order (outermost → innermost):
 # ResponseTimeMiddleware → CORSMiddleware → RequestSizeMiddleware
-# → RateLimitMiddleware → RequestIdMiddleware → ApiKeyMiddleware → route
-# Starlette: last add_middleware() call = outermost (executes first on request)
-app.add_middleware(ApiKeyMiddleware)
-app.add_middleware(RequestIdMiddleware)
+# → RateLimitMiddleware → RequestIdMiddleware
+# → JwtAuthMiddleware → ApiKeyMiddleware → route
+#
+# Starlette: last add_middleware() = outermost (first to run on inbound request)
+app.add_middleware(ApiKeyMiddleware)           # innermost auth
+app.add_middleware(JwtAuthMiddleware)          # JWT: sets request.state.user_id
+app.add_middleware(RequestIdMiddleware)        # correlation ID
 app.add_middleware(RateLimitMiddleware, enabled=settings.rate_limit_enabled)
 app.add_middleware(RequestSizeMiddleware, max_kb=settings.max_request_size_kb)
 app.add_middleware(
@@ -77,7 +81,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-app.add_middleware(ResponseTimeMiddleware)  # outermost: measures full pipeline latency
+app.add_middleware(ResponseTimeMiddleware)     # outermost: measures full pipeline latency
 
 
 @app.exception_handler(Exception)

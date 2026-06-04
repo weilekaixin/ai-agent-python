@@ -28,12 +28,15 @@ class RequestIdMiddleware(BaseHTTPMiddleware):
 
 class ApiKeyMiddleware(BaseHTTPMiddleware):
     """Validate X-Api-Key when settings.api_key is non-empty.
-    Empty api_key = open mode (dev / internal deployment).
+
+    Skipped when:
+    - settings.api_key is empty (open/dev mode)
+    - settings.jwt_enabled = True (JWT is the active auth mechanism)
+    - Request path is in _SKIP_AUTH
     """
 
     async def dispatch(self, request: Request, call_next):
-        # 开发模式或跳过路径，直接放行
-        if not settings.api_key or request.url.path in _SKIP_AUTH:
+        if not settings.api_key or settings.jwt_enabled or request.url.path in _SKIP_AUTH:
             return await call_next(request)
         provided = request.headers.get("X-Api-Key", "")
         # secrets.compare_digest 防止时序攻击

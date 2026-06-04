@@ -26,6 +26,7 @@ dependencies = [
     "langgraph-checkpoint-postgres>=3.1.0",
     "apscheduler>=3.10.4",
     "prometheus-fastapi-instrumentator>=7.0.0",
+    "PyJWT>=2.8.0",
 ]
 
 [project.optional-dependencies]
