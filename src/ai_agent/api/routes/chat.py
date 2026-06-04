@@ -4,14 +4,14 @@ from uuid import uuid4
 
 from fastapi import APIRouter, Request, status
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import HumanMessage
+from langchain_core.messages import HumanMessage, SystemMessage
 
 from ai_agent.api.schemas.chat import ChatRequest, ResumeRequest
 from ai_agent.api.schemas.common import fail
 from ai_agent.core.factory import build_messages_with_history
 from ai_agent.models.constants import TEXT_EVENT_STREAM, ERROR_MESSAGE_AGENT_NOT_INIT, EMPTY_STR, AI, HUMAN
 from ai_agent.modules.cache.history import save_message_to_redis
-from ai_agent.modules.db.dao import save_message_to_db
+from ai_agent.modules.db.dao import save_message_to_db, get_persona
 from ai_agent.modules.memory.auto_memory import consolidate_conversation
 from ai_agent.utils.sse import sse_format
 from ai_agent.utils.stream import token_stream
@@ -29,6 +29,12 @@ async def chat(query: Request, body: ChatRequest):
     thread_id = str(uuid4())
     config = {"configurable": {"thread_id": thread_id}}
     messages = build_messages_with_history(body.session_id, body.message)
+
+    # Inject persona system prompt if provided (ChatGPT Custom GPTs style)
+    if body.persona_id:
+        persona = get_persona(body.persona_id)
+        if persona and persona.get("system_prompt") and persona.get("is_active"):
+            messages = [SystemMessage(content=persona["system_prompt"])] + messages
 
     async def stream_and_save():
         ai_response = []
@@ -56,7 +62,6 @@ async def chat(query: Request, body: ChatRequest):
         save_message_to_redis(body.session_id, AI, full_response)
         save_message_to_db(body.session_id, HUMAN, body.message)
         save_message_to_db(body.session_id, AI, full_response)
-        # 异步提取对话要点，不阻塞 SSE 流
         asyncio.create_task(consolidate_conversation(list(state.values["messages"])))
 
     return StreamingResponse(sse_format(stream_and_save()), media_type=TEXT_EVENT_STREAM)

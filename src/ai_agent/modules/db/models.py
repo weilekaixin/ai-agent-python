@@ -23,3 +23,18 @@ class Message(SQLModel, table=True):
     role: str = Field(max_length=20)  # human / ai
     content: str
     created_time: datetime = Field(default_factory=datetime.now)
+
+
+class Persona(SQLModel, table=True):
+    """自定义 AI 角色表（Custom GPTs / Gems 风格）"""
+    __tablename__ = "persona"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    persona_id: str = Field(unique=True, index=True, max_length=36)
+    name: str = Field(max_length=100)
+    description: Optional[str] = Field(default=None, max_length=500)
+    system_prompt: str
+    avatar: Optional[str] = Field(default=None, max_length=200)
+    is_active: bool = Field(default=True)
+    created_time: datetime = Field(default_factory=datetime.now)
+    updated_time: datetime = Field(default_factory=datetime.now)

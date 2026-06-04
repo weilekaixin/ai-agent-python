@@ -1,7 +1,11 @@
+import uuid
+from datetime import datetime
+from typing import Optional
+
 from sqlmodel import select
 
 from ai_agent.modules.db.client import get_session
-from ai_agent.modules.db.models import Conversation, Message
+from ai_agent.modules.db.models import Conversation, Message, Persona
 
 
 def save_message_to_db(session_id: str, role: str, content: str) -> None:
@@ -48,3 +52,97 @@ def delete_session(session_id: str) -> None:
         ).first()
         if conv:
             session.delete(conv)
+
+
+# ──────────── Persona CRUD ────────────
+
+def _persona_to_dict(p: Persona) -> dict:
+    return {
+        "persona_id": p.persona_id,
+        "name": p.name,
+        "description": p.description,
+        "system_prompt": p.system_prompt,
+        "avatar": p.avatar,
+        "is_active": p.is_active,
+        "created_time": p.created_time.isoformat(),
+        "updated_time": p.updated_time.isoformat(),
+    }
+
+
+def create_persona(
+    name: str,
+    system_prompt: str,
+    description: Optional[str] = None,
+    avatar: Optional[str] = None,
+) -> dict:
+    with get_session() as session:
+        p = Persona(
+            persona_id=uuid.uuid4().hex,
+            name=name,
+            description=description,
+            system_prompt=system_prompt,
+            avatar=avatar,
+        )
+        session.add(p)
+        session.flush()  # populate auto-generated fields before session closes
+        result = _persona_to_dict(p)
+    return result
+
+
+def get_persona(persona_id: str) -> Optional[dict]:
+    with get_session() as session:
+        p = session.exec(
+            select(Persona).where(Persona.persona_id == persona_id)
+        ).first()
+        if p is None:
+            return None
+        return _persona_to_dict(p)
+
+
+def list_personas(active_only: bool = True) -> list[dict]:
+    with get_session() as session:
+        q = select(Persona)
+        if active_only:
+            q = q.where(Persona.is_active == True)  # noqa: E712
+        rows = session.exec(q.order_by(Persona.created_time.desc())).all()
+        return [_persona_to_dict(p) for p in rows]
+
+
+def update_persona(
+    persona_id: str,
+    name: Optional[str] = None,
+    system_prompt: Optional[str] = None,
+    description: Optional[str] = None,
+    avatar: Optional[str] = None,
+    is_active: Optional[bool] = None,
+) -> Optional[dict]:
+    with get_session() as session:
+        p = session.exec(
+            select(Persona).where(Persona.persona_id == persona_id)
+        ).first()
+        if p is None:
+            return None
+        for attr, value in [
+            ("name", name),
+            ("system_prompt", system_prompt),
+            ("description", description),
+            ("avatar", avatar),
+            ("is_active", is_active),
+        ]:
+            if value is not None:  # None = not provided; False is handled correctly
+                setattr(p, attr, value)
+        p.updated_time = datetime.now()
+        session.add(p)
+        result = _persona_to_dict(p)
+    return result
+
+
+def delete_persona(persona_id: str) -> bool:
+    with get_session() as session:
+        p = session.exec(
+            select(Persona).where(Persona.persona_id == persona_id)
+        ).first()
+        if p is None:
+            return False
+        session.delete(p)
+    return True
