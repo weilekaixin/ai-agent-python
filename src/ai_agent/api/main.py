@@ -16,10 +16,12 @@ from ai_agent.api.middleware.request_size import RequestSizeMiddleware
 from ai_agent.api.middleware.response_time import ResponseTimeMiddleware
 from ai_agent.api.routes.chat import router as chat_router
 from ai_agent.api.routes.feedback import router as feedback_router
+from ai_agent.api.routes.message import router as message_router
 from ai_agent.api.routes.multi_agent import router as multi_agent_router
 from ai_agent.api.routes.persona import router as persona_router
 from ai_agent.api.routes.session import router as session_router
 from ai_agent.api.routes.structured import router as structured_router
+from ai_agent.api.routes.tags import router as tags_router
 from ai_agent.config.logging_config import setup_logging
 from ai_agent.config.settings import settings
 from ai_agent.core.factory import create_rag_retriever, setup_llm_cache
@@ -139,6 +141,8 @@ async def trigger_dream():
 app.include_router(chat_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(feedback_router, prefix="/api")
+app.include_router(message_router, prefix="/api")
+app.include_router(tags_router, prefix="/api")
 app.include_router(persona_router, prefix="/api")
 app.include_router(structured_router, prefix="/api")
 app.include_router(multi_agent_router, prefix="/api")

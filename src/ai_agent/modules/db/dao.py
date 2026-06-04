@@ -1,4 +1,5 @@
 import uuid
+from collections import Counter
 from datetime import datetime
 from typing import Optional
 
@@ -6,7 +7,9 @@ from sqlalchemy import func
 from sqlmodel import select
 
 from ai_agent.modules.db.client import get_session
-from ai_agent.modules.db.models import Conversation, Message, MessageFeedback, Persona
+from ai_agent.modules.db.models import (
+    Conversation, Message, MessageFeedback, Persona, PinnedMessage, SessionTag
+)
 
 
 def save_message_to_db(session_id: str, role: str, content: str) -> None:
@@ -316,3 +319,135 @@ def get_feedback_stats(session_id: str) -> dict:
         "negative": negative,
         "positive_rate": round(positive / total, 4) if total > 0 else 0.0,
     }
+
+
+# ──────────── Session Tags ────────────
+
+def _tag_to_dict(t: SessionTag) -> dict:
+    return {
+        "id": t.id,
+        "session_id": t.session_id,
+        "tag": t.tag,
+        "created_time": t.created_time.isoformat(),
+    }
+
+
+def add_session_tag(session_id: str, tag: str) -> dict:
+    """为会话添加标签（幂等：已存在则直接返回）。标签自动转小写。"""
+    tag = tag.strip().lower()[:100]
+    with get_session() as db:
+        existing = db.exec(
+            select(SessionTag)
+            .where(SessionTag.session_id == session_id)
+            .where(SessionTag.tag == tag)
+        ).first()
+        if existing:
+            return _tag_to_dict(existing)
+        t = SessionTag(session_id=session_id, tag=tag)
+        db.add(t)
+        db.flush()
+        return _tag_to_dict(t)
+
+
+def remove_session_tag(session_id: str, tag: str) -> bool:
+    """移除会话标签，返回 False 表示标签不存在。"""
+    tag = tag.strip().lower()
+    with get_session() as db:
+        t = db.exec(
+            select(SessionTag)
+            .where(SessionTag.session_id == session_id)
+            .where(SessionTag.tag == tag)
+        ).first()
+        if t is None:
+            return False
+        db.delete(t)
+    return True
+
+
+def get_session_tags(session_id: str) -> list[str]:
+    """返回会话的标签列表（字符串列表，按字母升序）。"""
+    with get_session() as db:
+        rows = db.exec(
+            select(SessionTag)
+            .where(SessionTag.session_id == session_id)
+            .order_by(SessionTag.tag)
+        ).all()
+        return [r.tag for r in rows]
+
+
+def get_sessions_by_tag(tag: str, page: int = 1, size: int = 20) -> tuple[list[str], int]:
+    """按标签查询会话 ID 列表，返回 (session_ids, total)。"""
+    tag = tag.strip().lower()
+    offset = max(0, (page - 1) * size)
+    with get_session() as db:
+        total = int(db.exec(
+            select(func.count()).select_from(SessionTag).where(SessionTag.tag == tag)
+        ).one())
+        rows = db.exec(
+            select(SessionTag)
+            .where(SessionTag.tag == tag)
+            .offset(offset)
+            .limit(size)
+        ).all()
+        return [r.session_id for r in rows], total
+
+
+def list_all_tags() -> list[dict]:
+    """列出所有标签及其使用次数，按使用次数降序。"""
+    with get_session() as db:
+        rows = db.exec(select(SessionTag)).all()
+    counts = Counter(r.tag for r in rows)
+    return [{"tag": tag, "count": count} for tag, count in counts.most_common()]
+
+
+# ──────────── Message Pinning ────────────
+
+def _pin_to_dict(p: PinnedMessage) -> dict:
+    return {
+        "id": p.id,
+        "message_id": p.message_id,
+        "session_id": p.session_id,
+        "note": p.note,
+        "created_time": p.created_time.isoformat(),
+    }
+
+
+def pin_message(message_id: int, session_id: str, note: Optional[str] = None) -> dict:
+    """置顶/收藏一条消息（幂等：已置顶则更新备注并返回）。"""
+    with get_session() as db:
+        existing = db.exec(
+            select(PinnedMessage).where(PinnedMessage.message_id == message_id)
+        ).first()
+        if existing:
+            if note is not None:
+                existing.note = note
+                db.add(existing)
+                db.flush()
+            return _pin_to_dict(existing)
+        pm = PinnedMessage(message_id=message_id, session_id=session_id, note=note)
+        db.add(pm)
+        db.flush()
+        return _pin_to_dict(pm)
+
+
+def unpin_message(message_id: int) -> bool:
+    """取消置顶，返回 False 表示该消息未被置顶。"""
+    with get_session() as db:
+        pm = db.exec(
+            select(PinnedMessage).where(PinnedMessage.message_id == message_id)
+        ).first()
+        if pm is None:
+            return False
+        db.delete(pm)
+    return True
+
+
+def get_pinned_messages(session_id: str) -> list[dict]:
+    """返回某会话下所有已置顶的消息，按置顶时间降序。"""
+    with get_session() as db:
+        rows = db.exec(
+            select(PinnedMessage)
+            .where(PinnedMessage.session_id == session_id)
+            .order_by(PinnedMessage.created_time.desc())
+        ).all()
+        return [_pin_to_dict(p) for p in rows]

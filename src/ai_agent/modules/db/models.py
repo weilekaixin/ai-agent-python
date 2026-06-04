@@ -1,6 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import UniqueConstraint
 from sqlmodel import SQLModel, Field
 
 
@@ -50,4 +51,26 @@ class MessageFeedback(SQLModel, table=True):
     session_id: str = Field(index=True, max_length=36)
     rating: int                                  # +1 thumbs-up, -1 thumbs-down
     comment: Optional[str] = Field(default=None, max_length=1000)
+    created_time: datetime = Field(default_factory=datetime.now)
+
+
+class SessionTag(SQLModel, table=True):
+    """会话标签表（同一会话内标签不重复）"""
+    __tablename__ = "session_tag"
+    __table_args__ = (UniqueConstraint("session_id", "tag", name="uq_session_tag"),)
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: str = Field(index=True, max_length=36)
+    tag: str = Field(max_length=100)
+    created_time: datetime = Field(default_factory=datetime.now)
+
+
+class PinnedMessage(SQLModel, table=True):
+    """消息置顶/收藏表（每条消息最多置顶一次）"""
+    __tablename__ = "pinned_message"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    message_id: int = Field(unique=True, index=True)   # soft FK, unique per message
+    session_id: str = Field(index=True, max_length=36)
+    note: Optional[str] = Field(default=None, max_length=500)
     created_time: datetime = Field(default_factory=datetime.now)
