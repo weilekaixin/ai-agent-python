@@ -22,6 +22,7 @@ from ai_agent.api.routes.persona import router as persona_router
 from ai_agent.api.routes.session import router as session_router
 from ai_agent.api.routes.structured import router as structured_router
 from ai_agent.api.routes.tags import router as tags_router
+from ai_agent.api.routes.usage import router as usage_router
 from ai_agent.config.logging_config import setup_logging
 from ai_agent.config.settings import settings
 from ai_agent.core.factory import create_rag_retriever, setup_llm_cache
@@ -143,6 +144,7 @@ app.include_router(session_router, prefix="/api")
 app.include_router(feedback_router, prefix="/api")
 app.include_router(message_router, prefix="/api")
 app.include_router(tags_router, prefix="/api")
+app.include_router(usage_router, prefix="/api")
 app.include_router(persona_router, prefix="/api")
 app.include_router(structured_router, prefix="/api")
 app.include_router(multi_agent_router, prefix="/api")

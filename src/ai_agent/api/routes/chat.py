@@ -11,12 +11,31 @@ from ai_agent.api.schemas.common import fail
 from ai_agent.core.factory import build_messages_with_history
 from ai_agent.models.constants import TEXT_EVENT_STREAM, ERROR_MESSAGE_AGENT_NOT_INIT, EMPTY_STR, AI, HUMAN
 from ai_agent.modules.cache.history import save_message_to_redis
-from ai_agent.modules.db.dao import save_message_to_db, get_persona
+from ai_agent.modules.db.dao import save_message_to_db, get_persona, record_token_usage
 from ai_agent.modules.memory.auto_memory import consolidate_conversation
 from ai_agent.utils.sse import sse_format
 from ai_agent.utils.stream import token_stream
 
 router = APIRouter()
+
+
+def _record_tokens(session_id: str, messages: list) -> None:
+    """Extract usage_metadata from the last AIMessage and persist to DB. No-op if absent."""
+    last_ai = next(
+        (m for m in reversed(messages) if getattr(m, "usage_metadata", None)),
+        None,
+    )
+    if last_ai is None:
+        return
+    meta = last_ai.usage_metadata
+    resp_meta = getattr(last_ai, "response_metadata", {}) or {}
+    model_name = resp_meta.get("model_name") or resp_meta.get("model") or "unknown"
+    record_token_usage(
+        session_id=session_id,
+        input_tokens=int(meta.get("input_tokens", 0)),
+        output_tokens=int(meta.get("output_tokens", 0)),
+        model=model_name,
+    )
 
 
 @router.post("/chat")
@@ -62,6 +81,7 @@ async def chat(query: Request, body: ChatRequest):
         save_message_to_redis(body.session_id, AI, full_response)
         save_message_to_db(body.session_id, HUMAN, body.message)
         save_message_to_db(body.session_id, AI, full_response)
+        _record_tokens(body.session_id, state.values.get("messages", []))
         asyncio.create_task(consolidate_conversation(list(state.values["messages"])))
 
     return StreamingResponse(sse_format(stream_and_save()), media_type=TEXT_EVENT_STREAM)
@@ -112,6 +132,7 @@ async def resume(query: Request, body: ResumeRequest):
         save_message_to_redis(body.session_id, AI, full_response)
         save_message_to_db(body.session_id, HUMAN, user_message)
         save_message_to_db(body.session_id, AI, full_response)
+        _record_tokens(body.session_id, full_state.values.get("messages", []))
         asyncio.create_task(consolidate_conversation(list(full_state.values["messages"])))
 
     async def stream_and_save_with_cleanup():

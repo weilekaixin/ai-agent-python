@@ -42,12 +42,12 @@ class Persona(SQLModel, table=True):
 
 
 class MessageFeedback(SQLModel, table=True):
-    """消息反馈表（点赞 / 踩 + 可选评论，每条消息保留最新一条反馈）"""
+    """消息反馈表（点赞 / 踩 + 可选评论，每条消息保留最新一条）"""
     __tablename__ = "message_feedback"
 
     id: Optional[int] = Field(default=None, primary_key=True)
     feedback_id: str = Field(unique=True, index=True, max_length=36)
-    message_id: int = Field(index=True)         # soft FK to message.id
+    message_id: int = Field(index=True)
     session_id: str = Field(index=True, max_length=36)
     rating: int                                  # +1 thumbs-up, -1 thumbs-down
     comment: Optional[str] = Field(default=None, max_length=1000)
@@ -70,7 +70,20 @@ class PinnedMessage(SQLModel, table=True):
     __tablename__ = "pinned_message"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    message_id: int = Field(unique=True, index=True)   # soft FK, unique per message
+    message_id: int = Field(unique=True, index=True)
     session_id: str = Field(index=True, max_length=36)
     note: Optional[str] = Field(default=None, max_length=500)
+    created_time: datetime = Field(default_factory=datetime.now)
+
+
+class TokenUsage(SQLModel, table=True):
+    """每次 AI 响应的 Token 用量记录"""
+    __tablename__ = "token_usage"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    session_id: str = Field(index=True, max_length=36)
+    input_tokens: int = Field(default=0)
+    output_tokens: int = Field(default=0)
+    total_tokens: int = Field(default=0)          # input + output
+    model: str = Field(default="unknown", max_length=100)
     created_time: datetime = Field(default_factory=datetime.now)

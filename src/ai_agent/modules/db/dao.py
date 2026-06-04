@@ -8,7 +8,8 @@ from sqlmodel import select
 
 from ai_agent.modules.db.client import get_session
 from ai_agent.modules.db.models import (
-    Conversation, Message, MessageFeedback, Persona, PinnedMessage, SessionTag
+    Conversation, Message, MessageFeedback, Persona,
+    PinnedMessage, SessionTag, TokenUsage,
 )
 
 
@@ -173,7 +174,7 @@ def create_persona(
             avatar=avatar,
         )
         session.add(p)
-        session.flush()  # populate auto-generated fields before session closes
+        session.flush()
         result = _persona_to_dict(p)
     return result
 
@@ -218,7 +219,7 @@ def update_persona(
             ("avatar", avatar),
             ("is_active", is_active),
         ]:
-            if value is not None:  # None = not provided; False is handled correctly
+            if value is not None:
                 setattr(p, attr, value)
         p.updated_time = datetime.now()
         session.add(p)
@@ -284,7 +285,6 @@ def create_or_update_feedback(
 
 
 def get_feedback_by_message(message_id: int) -> Optional[dict]:
-    """查询某条消息的反馈（若有）。"""
     with get_session() as session:
         f = session.exec(
             select(MessageFeedback).where(MessageFeedback.message_id == message_id)
@@ -293,7 +293,6 @@ def get_feedback_by_message(message_id: int) -> Optional[dict]:
 
 
 def get_feedback_by_session(session_id: str) -> list[dict]:
-    """查询某会话下所有消息的反馈列表，按时间降序。"""
     with get_session() as session:
         rows = list(session.exec(
             select(MessageFeedback)
@@ -304,7 +303,6 @@ def get_feedback_by_session(session_id: str) -> list[dict]:
 
 
 def get_feedback_stats(session_id: str) -> dict:
-    """统计某会话的反馈数据：总数、点赞、踩、好评率。"""
     with get_session() as session:
         rows = list(session.exec(
             select(MessageFeedback).where(MessageFeedback.session_id == session_id)
@@ -333,7 +331,7 @@ def _tag_to_dict(t: SessionTag) -> dict:
 
 
 def add_session_tag(session_id: str, tag: str) -> dict:
-    """为会话添加标签（幂等：已存在则直接返回）。标签自动转小写。"""
+    """为会话添加标签（幂等）。"""
     tag = tag.strip().lower()[:100]
     with get_session() as db:
         existing = db.exec(
@@ -350,7 +348,6 @@ def add_session_tag(session_id: str, tag: str) -> dict:
 
 
 def remove_session_tag(session_id: str, tag: str) -> bool:
-    """移除会话标签，返回 False 表示标签不存在。"""
     tag = tag.strip().lower()
     with get_session() as db:
         t = db.exec(
@@ -365,7 +362,6 @@ def remove_session_tag(session_id: str, tag: str) -> bool:
 
 
 def get_session_tags(session_id: str) -> list[str]:
-    """返回会话的标签列表（字符串列表，按字母升序）。"""
     with get_session() as db:
         rows = db.exec(
             select(SessionTag)
@@ -376,7 +372,6 @@ def get_session_tags(session_id: str) -> list[str]:
 
 
 def get_sessions_by_tag(tag: str, page: int = 1, size: int = 20) -> tuple[list[str], int]:
-    """按标签查询会话 ID 列表，返回 (session_ids, total)。"""
     tag = tag.strip().lower()
     offset = max(0, (page - 1) * size)
     with get_session() as db:
@@ -393,7 +388,6 @@ def get_sessions_by_tag(tag: str, page: int = 1, size: int = 20) -> tuple[list[s
 
 
 def list_all_tags() -> list[dict]:
-    """列出所有标签及其使用次数，按使用次数降序。"""
     with get_session() as db:
         rows = db.exec(select(SessionTag)).all()
     counts = Counter(r.tag for r in rows)
@@ -413,7 +407,6 @@ def _pin_to_dict(p: PinnedMessage) -> dict:
 
 
 def pin_message(message_id: int, session_id: str, note: Optional[str] = None) -> dict:
-    """置顶/收藏一条消息（幂等：已置顶则更新备注并返回）。"""
     with get_session() as db:
         existing = db.exec(
             select(PinnedMessage).where(PinnedMessage.message_id == message_id)
@@ -431,7 +424,6 @@ def pin_message(message_id: int, session_id: str, note: Optional[str] = None) ->
 
 
 def unpin_message(message_id: int) -> bool:
-    """取消置顶，返回 False 表示该消息未被置顶。"""
     with get_session() as db:
         pm = db.exec(
             select(PinnedMessage).where(PinnedMessage.message_id == message_id)
@@ -443,7 +435,6 @@ def unpin_message(message_id: int) -> bool:
 
 
 def get_pinned_messages(session_id: str) -> list[dict]:
-    """返回某会话下所有已置顶的消息，按置顶时间降序。"""
     with get_session() as db:
         rows = db.exec(
             select(PinnedMessage)
@@ -451,3 +442,74 @@ def get_pinned_messages(session_id: str) -> list[dict]:
             .order_by(PinnedMessage.created_time.desc())
         ).all()
         return [_pin_to_dict(p) for p in rows]
+
+
+# ──────────── Token Usage ────────────
+
+def _usage_to_dict(u: TokenUsage) -> dict:
+    return {
+        "id": u.id,
+        "session_id": u.session_id,
+        "input_tokens": u.input_tokens,
+        "output_tokens": u.output_tokens,
+        "total_tokens": u.total_tokens,
+        "model": u.model,
+        "created_time": u.created_time.isoformat(),
+    }
+
+
+def record_token_usage(
+    session_id: str,
+    input_tokens: int,
+    output_tokens: int,
+    model: str = "unknown",
+) -> None:
+    """记录一次 AI 响应的 Token 用量。"""
+    with get_session() as db:
+        usage = TokenUsage(
+            session_id=session_id,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            total_tokens=input_tokens + output_tokens,
+            model=model,
+        )
+        db.add(usage)
+
+
+def get_session_token_usage(
+    session_id: str,
+    page: int = 1,
+    size: int = 20,
+) -> tuple[list[dict], int]:
+    """分页查询会话的 Token 用量记录。"""
+    offset = max(0, (page - 1) * size)
+    with get_session() as db:
+        total = int(db.exec(
+            select(func.count()).select_from(TokenUsage)
+            .where(TokenUsage.session_id == session_id)
+        ).one())
+        rows = db.exec(
+            select(TokenUsage)
+            .where(TokenUsage.session_id == session_id)
+            .order_by(TokenUsage.created_time.desc())
+            .offset(offset)
+            .limit(size)
+        ).all()
+    return [_usage_to_dict(u) for u in rows], total
+
+
+def get_token_usage_summary(session_id: str) -> dict:
+    """汇总某会话的 Token 用量。"""
+    with get_session() as db:
+        rows = db.exec(
+            select(TokenUsage).where(TokenUsage.session_id == session_id)
+        ).all()
+    total_in = sum(r.input_tokens for r in rows)
+    total_out = sum(r.output_tokens for r in rows)
+    return {
+        "session_id": session_id,
+        "requests": len(rows),
+        "total_input_tokens": total_in,
+        "total_output_tokens": total_out,
+        "total_tokens": total_in + total_out,
+    }
