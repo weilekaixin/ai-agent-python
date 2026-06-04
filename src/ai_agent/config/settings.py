@@ -5,7 +5,6 @@ from pydantic_settings import BaseSettings
 from ai_agent.models.constants import (ENV_FILE, ENV, ENV_FILE_ENCODING, ENCODING, EMPTY_STR, ROOT)
 from ai_agent.models.db import (NUM_6379, NUM_19530, NUM_5432, AI_AGENT, POSTGRES, POSTGRESQL, LOCALHOST)
 
-# 项目根目录
 BASE_DIR = Path(__file__).resolve().parent.parent.parent.parent
 
 
@@ -28,8 +27,8 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_username: str = EMPTY_STR
     smtp_password: str = EMPTY_STR
-    # 空字符串 = 关闭鉴权（开发模式）；不为空 = 开启 API Key 鉴权
     api_key: str = EMPTY_STR
+    log_level: str = "INFO"
 
     @property
     def postgres_url(self) -> str:

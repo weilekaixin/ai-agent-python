@@ -11,12 +11,15 @@ from sqlalchemy import text
 from ai_agent.api.middleware.auth import ApiKeyMiddleware, RequestIdMiddleware
 from ai_agent.api.routes.chat import router as chat_router
 from ai_agent.api.routes.session import router as session_router
+from ai_agent.config.logging_config import setup_logging
 from ai_agent.config.settings import settings
 from ai_agent.core.factory import create_rag_retriever, setup_llm_cache
 from ai_agent.core.graph import create_graph
 from ai_agent.modules.db.client import init_db, engine
 from ai_agent.modules.memory.dreaming import dream
 
+# 尽早配置日志，确保所有模块的日志输出都是 JSON 格式
+setup_logging(settings.log_level)
 logger = logging.getLogger(__name__)
 
 
@@ -71,7 +74,6 @@ async def health(req: Request):
     """Deep health check for k8s readiness/liveness probes."""
     checks: dict[str, str] = {}
 
-    # PostgreSQL
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
@@ -79,7 +81,6 @@ async def health(req: Request):
     except Exception:
         checks["postgres"] = "error"
 
-    # Redis
     try:
         r = redis_lib.Redis(
             host=settings.redis_host,
@@ -94,7 +95,6 @@ async def health(req: Request):
     except Exception:
         checks["redis"] = "error"
 
-    # Agent
     checks["agent"] = "ok" if getattr(req.app.state, "agent", None) else "not_ready"
 
     all_ok = all(v == "ok" for v in checks.values())
