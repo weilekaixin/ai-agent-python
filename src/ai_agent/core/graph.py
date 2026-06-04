@@ -1,4 +1,5 @@
 import json
+from collections import Counter
 from typing import TypedDict, Annotated
 
 from langchain_core.messages import BaseMessage, SystemMessage
@@ -21,7 +22,6 @@ class AgentState(TypedDict):
 
 
 def _load_agents_md() -> str:
-    """加载 AGENTS.md 作为系统提示词基础"""
     path = BASE_DIR / "AGENTS.md"
     if path.exists():
         return path.read_text(encoding="utf-8")
@@ -29,20 +29,16 @@ def _load_agents_md() -> str:
 
 
 async def create_graph(retriever):
-    """创建 LangGraph 图，retriever 由外部注入"""
     search_tool = make_search_tool(retriever)
     safe_tools = [get_current_time, calculator, web_search, search_tool]
     sensitive_tools = [send_email]
     all_tools = safe_tools + sensitive_tools
 
-    # LLM 绑定工具，单例创建，避免每次节点调用都 new 实例
     llm = get_llm().bind_tools(all_tools)
-    # 系统提示词在启动时加载一次，运行期不变
     system_prompt = _load_agents_md()
 
     def llm_node(state: AgentState):
         messages = list(state["messages"])
-        # 首轮对话注入系统提示词，后续轮次已有 SystemMessage 则跳过
         if system_prompt and not any(isinstance(m, SystemMessage) for m in messages):
             messages = [SystemMessage(content=system_prompt)] + messages
         response = llm.invoke(messages)
@@ -50,12 +46,26 @@ async def create_graph(retriever):
 
     def should_continue(state: AgentState):
         last_message = state["messages"][-1]
+
+        # 护栏1: 最多调用5次工具
         tool_call_count = sum(
             1 for msg in state["messages"]
             if hasattr(msg, "tool_calls") and msg.tool_calls
         )
         if tool_call_count >= 5:
             return END
+
+        # 护栏2: 同一工具+参数重复3次 → 结构性终止，防止 LLM 幻觉死循环
+        signatures = [
+            f"{tc['name']}:{json.dumps(tc.get('args', {}), sort_keys=True)}"
+            for msg in state["messages"]
+            if hasattr(msg, "tool_calls") and msg.tool_calls
+            for tc in msg.tool_calls
+        ]
+        counts = Counter(signatures)
+        if counts and counts.most_common(1)[0][1] >= 3:
+            return END
+
         if hasattr(last_message, "tool_calls") and last_message.tool_calls:
             tool_names = {tc["name"] for tc in last_message.tool_calls}
             if tool_names & SENSITIVE_TOOLS:
