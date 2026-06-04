@@ -14,6 +14,7 @@ from ai_agent.api.middleware.jwt_auth import JwtAuthMiddleware
 from ai_agent.api.middleware.rate_limit import RateLimitMiddleware
 from ai_agent.api.middleware.request_size import RequestSizeMiddleware
 from ai_agent.api.middleware.response_time import ResponseTimeMiddleware
+from ai_agent.api.routes.admin import router as admin_router
 from ai_agent.api.routes.chat import router as chat_router
 from ai_agent.api.routes.feedback import router as feedback_router
 from ai_agent.api.routes.message import router as message_router
@@ -145,6 +146,7 @@ app.include_router(feedback_router, prefix="/api")
 app.include_router(message_router, prefix="/api")
 app.include_router(tags_router, prefix="/api")
 app.include_router(usage_router, prefix="/api")
+app.include_router(admin_router, prefix="/api")
 app.include_router(persona_router, prefix="/api")
 app.include_router(structured_router, prefix="/api")
 app.include_router(multi_agent_router, prefix="/api")

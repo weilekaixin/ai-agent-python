@@ -1,6 +1,6 @@
 import uuid
 from collections import Counter
-from datetime import datetime
+from datetime import date, datetime, time
 from typing import Optional
 
 from sqlalchemy import func
@@ -14,7 +14,6 @@ from ai_agent.modules.db.models import (
 
 
 def save_message_to_db(session_id: str, role: str, content: str) -> None:
-    """保存一条消息（commit 由 get_session 上下文管理器处理）"""
     with get_session() as session:
         conv = session.exec(
             select(Conversation).where(Conversation.session_id == session_id)
@@ -27,7 +26,6 @@ def save_message_to_db(session_id: str, role: str, content: str) -> None:
 
 
 def get_messages_by_session(session_id: str) -> list[Message]:
-    """查询某会话的全部消息，按时间升序"""
     with get_session() as session:
         return list(session.exec(
             select(Message)
@@ -37,7 +35,6 @@ def get_messages_by_session(session_id: str) -> list[Message]:
 
 
 def get_message_by_id(message_id: int) -> Optional[Message]:
-    """按主键查询单条消息"""
     with get_session() as session:
         return session.exec(
             select(Message).where(Message.id == message_id)
@@ -45,7 +42,6 @@ def get_message_by_id(message_id: int) -> Optional[Message]:
 
 
 def get_sessions() -> list[Conversation]:
-    """查询全部会话，按创建时间降序"""
     with get_session() as session:
         return list(session.exec(
             select(Conversation).order_by(Conversation.created_time.desc())
@@ -53,7 +49,6 @@ def get_sessions() -> list[Conversation]:
 
 
 def get_sessions_paginated(page: int = 1, size: int = 50) -> tuple[list[Conversation], int]:
-    """分页查询会话，返回 (数据列表, 总数)"""
     offset = max(0, (page - 1) * size)
     with get_session() as session:
         total = session.exec(
@@ -74,7 +69,6 @@ def search_messages(
     page: int = 1,
     size: int = 20,
 ) -> tuple[list[dict], int]:
-    """按关键词全文检索消息内容，可选按会话过滤，返回 (消息列表, 总数)。"""
     if not keyword or not keyword.strip():
         return [], 0
     offset = max(0, (page - 1) * size)
@@ -105,7 +99,6 @@ def search_messages(
 
 
 def delete_session(session_id: str) -> None:
-    """删除会话及其全部消息"""
     with get_session() as session:
         messages = list(session.exec(
             select(Message).where(Message.session_id == session_id)
@@ -120,7 +113,6 @@ def delete_session(session_id: str) -> None:
 
 
 def update_session_title(session_id: str, title: str) -> bool:
-    """更新会话标题，返回 False 表示会话不存在"""
     with get_session() as session:
         conv = session.exec(
             select(Conversation).where(Conversation.session_id == session_id)
@@ -133,7 +125,6 @@ def update_session_title(session_id: str, title: str) -> bool:
 
 
 def clear_session_messages(session_id: str) -> int:
-    """清空会话内所有消息，保留会话记录本身。返回删除的消息数量。"""
     with get_session() as session:
         messages = list(session.exec(
             select(Message).where(Message.session_id == session_id)
@@ -258,7 +249,6 @@ def create_or_update_feedback(
     rating: int,
     comment: Optional[str] = None,
 ) -> dict:
-    """为消息创建或更新反馈（每条消息只保留最新一条反馈）。"""
     with get_session() as session:
         existing = session.exec(
             select(MessageFeedback).where(MessageFeedback.message_id == message_id)
@@ -331,7 +321,6 @@ def _tag_to_dict(t: SessionTag) -> dict:
 
 
 def add_session_tag(session_id: str, tag: str) -> dict:
-    """为会话添加标签（幂等）。"""
     tag = tag.strip().lower()[:100]
     with get_session() as db:
         existing = db.exec(
@@ -464,7 +453,6 @@ def record_token_usage(
     output_tokens: int,
     model: str = "unknown",
 ) -> None:
-    """记录一次 AI 响应的 Token 用量。"""
     with get_session() as db:
         usage = TokenUsage(
             session_id=session_id,
@@ -481,7 +469,6 @@ def get_session_token_usage(
     page: int = 1,
     size: int = 20,
 ) -> tuple[list[dict], int]:
-    """分页查询会话的 Token 用量记录。"""
     offset = max(0, (page - 1) * size)
     with get_session() as db:
         total = int(db.exec(
@@ -499,7 +486,6 @@ def get_session_token_usage(
 
 
 def get_token_usage_summary(session_id: str) -> dict:
-    """汇总某会话的 Token 用量。"""
     with get_session() as db:
         rows = db.exec(
             select(TokenUsage).where(TokenUsage.session_id == session_id)
@@ -512,4 +498,67 @@ def get_token_usage_summary(session_id: str) -> dict:
         "total_input_tokens": total_in,
         "total_output_tokens": total_out,
         "total_tokens": total_in + total_out,
+    }
+
+
+# ──────────── Admin / Global Stats ────────────
+
+def get_global_stats() -> dict:
+    """全局统计面板：会话、消息、Token、反馈、标签、置顶等聂合指标。"""
+    today_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+
+    with get_session() as db:
+        total_sessions = int(db.exec(select(func.count()).select_from(Conversation)).one())
+        today_sessions = int(db.exec(
+            select(func.count()).select_from(Conversation)
+            .where(Conversation.created_time >= today_start)
+        ).one())
+
+        total_messages = int(db.exec(select(func.count()).select_from(Message)).one())
+        today_messages = int(db.exec(
+            select(func.count()).select_from(Message)
+            .where(Message.created_time >= today_start)
+        ).one())
+        human_count = int(db.exec(
+            select(func.count()).select_from(Message).where(Message.role == "human")
+        ).one())
+
+        all_usage = list(db.exec(select(TokenUsage)).all())
+        all_fb = list(db.exec(select(MessageFeedback)).all())
+        all_tags = list(db.exec(select(SessionTag)).all())
+        total_pinned = int(db.exec(select(func.count()).select_from(PinnedMessage)).one())
+        total_personas = int(db.exec(select(func.count()).select_from(Persona)).one())
+
+    total_in = sum(u.input_tokens for u in all_usage)
+    total_out = sum(u.output_tokens for u in all_usage)
+    fb_total = len(all_fb)
+    fb_positive = sum(1 for f in all_fb if f.rating == 1)
+
+    return {
+        "sessions": {"total": total_sessions, "today": today_sessions},
+        "messages": {
+            "total": total_messages,
+            "today": today_messages,
+            "human": human_count,
+            "ai": total_messages - human_count,
+        },
+        "tokens": {
+            "requests": len(all_usage),
+            "total_input": total_in,
+            "total_output": total_out,
+            "total": total_in + total_out,
+        },
+        "feedback": {
+            "total": fb_total,
+            "positive": fb_positive,
+            "negative": fb_total - fb_positive,
+            "positive_rate": round(fb_positive / fb_total, 4) if fb_total > 0 else 0.0,
+        },
+        "tags": {
+            "total_assignments": len(all_tags),
+            "distinct_tags": len({t.tag for t in all_tags}),
+            "labeled_sessions": len({t.session_id for t in all_tags}),
+        },
+        "pinned_messages": {"total": total_pinned},
+        "personas": {"total": total_personas},
     }
