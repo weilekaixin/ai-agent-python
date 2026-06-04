@@ -24,6 +24,7 @@ dependencies = [
     "sqlmodel>=0.0.38",
     "psycopg[binary]>=3.3.4",
     "langgraph-checkpoint-postgres>=3.1.0",
+    "apscheduler>=3.10.4",
 ]
 
 [project.optional-dependencies]
