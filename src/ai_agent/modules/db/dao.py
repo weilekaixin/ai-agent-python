@@ -67,6 +67,18 @@ def update_session_title(session_id: str, title: str) -> bool:
     return True
 
 
+def clear_session_messages(session_id: str) -> int:
+    """清空会话内所有消息，保留会话记录本身。返回删除的消息数量。"""
+    with get_session() as session:
+        messages = list(session.exec(
+            select(Message).where(Message.session_id == session_id)
+        ).all())
+        count = len(messages)
+        for msg in messages:
+            session.delete(msg)
+    return count
+
+
 # ──────────── Persona CRUD ────────────
 
 def _persona_to_dict(p: Persona) -> dict:

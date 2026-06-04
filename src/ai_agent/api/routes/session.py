@@ -4,7 +4,9 @@ from fastapi import APIRouter
 from pydantic import BaseModel, Field
 
 from ai_agent.api.schemas.common import fail, ok
+from ai_agent.modules.cache.history import clear_history
 from ai_agent.modules.db.dao import (
+    clear_session_messages,
     delete_session,
     get_messages_by_session,
     get_sessions,
@@ -72,6 +74,14 @@ def set_session_title(session_id: str, body: UpdateTitleRequest):
     if not updated:
         return fail(404, "Session not found")
     return ok({"session_id": session_id, "title": body.title})
+
+
+@router.post("/sessions/{session_id}/clear")
+def clear_session(session_id: str):
+    """清空会话消息（保留会话记录，开始新对话）"""
+    count = clear_session_messages(session_id)
+    clear_history(session_id)  # also flush Redis cache
+    return ok({"session_id": session_id, "cleared": count})
 
 
 @router.delete("/sessions/{session_id}")
