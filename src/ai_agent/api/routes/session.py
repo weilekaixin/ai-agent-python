@@ -1,6 +1,10 @@
+import csv
+import io
 from datetime import datetime
+from typing import Optional
 
 from fastapi import APIRouter, Query
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ai_agent.api.schemas.common import fail, ok
@@ -10,6 +14,7 @@ from ai_agent.modules.db.dao import (
     delete_session,
     get_messages_by_session,
     get_sessions_paginated,
+    search_messages,
     update_session_title,
 )
 
@@ -39,6 +44,24 @@ def list_sessions(
             }
             for s in sessions
         ],
+    })
+
+
+@router.get("/sessions/search")
+def search_session_messages(
+    q: str = Query(..., min_length=1, max_length=200, description="搜索关键词"),
+    session_id: Optional[str] = Query(default=None, description="限定某个会话内搜索"),
+    page: int = Query(default=1, ge=1),
+    size: int = Query(default=20, ge=1, le=100),
+):
+    """全文检索消息内容，支持按会话过滤（分页）"""
+    messages, total = search_messages(q, session_id, page, size)
+    return ok({
+        "total": total,
+        "page": page,
+        "size": size,
+        "keyword": q,
+        "list": messages,
     })
 
 
@@ -73,6 +96,34 @@ def export_session(session_id: str):
             for m in messages
         ],
     })
+
+
+@router.get("/sessions/{session_id}/export/csv")
+def export_session_csv(session_id: str):
+    """将会话消息导出为 CSV 文件（适合数据分析、微调）"""
+    messages = get_messages_by_session(session_id)
+    output = io.StringIO()
+    writer = csv.DictWriter(
+        output,
+        fieldnames=["session_id", "role", "content", "created_time"],
+        quoting=csv.QUOTE_ALL,
+    )
+    writer.writeheader()
+    for m in messages:
+        writer.writerow({
+            "session_id": m.session_id,
+            "role": m.role,
+            "content": m.content,
+            "created_time": m.created_time.isoformat(),
+        })
+    output.seek(0)
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv; charset=utf-8",
+        headers={
+            "Content-Disposition": f'attachment; filename="session_{session_id}.csv"'
+        },
+    )
 
 
 @router.put("/sessions/{session_id}/title")

@@ -56,6 +56,42 @@ def get_sessions_paginated(page: int = 1, size: int = 50) -> tuple[list[Conversa
     return rows, int(total)
 
 
+def search_messages(
+    keyword: str,
+    session_id: Optional[str] = None,
+    page: int = 1,
+    size: int = 20,
+) -> tuple[list[dict], int]:
+    """按关键词全文检索消息内容，可选按会话过滤，返回 (消息列表, 总数)。"""
+    if not keyword or not keyword.strip():
+        return [], 0
+    offset = max(0, (page - 1) * size)
+    pattern = f"%{keyword}%"
+    with get_session() as session:
+        base_filter = Message.content.like(pattern)
+        count_q = select(func.count()).select_from(Message).where(base_filter)
+        data_q = select(Message).where(base_filter)
+        if session_id:
+            count_q = count_q.where(Message.session_id == session_id)
+            data_q = data_q.where(Message.session_id == session_id)
+        total = int(session.exec(count_q).one())
+        rows = list(session.exec(
+            data_q.order_by(Message.created_time.desc())
+            .offset(offset)
+            .limit(size)
+        ).all())
+    return [
+        {
+            "id": m.id,
+            "session_id": m.session_id,
+            "role": m.role,
+            "content": m.content,
+            "created_time": m.created_time.isoformat(),
+        }
+        for m in rows
+    ], total
+
+
 def delete_session(session_id: str) -> None:
     """删除会话及其全部消息"""
     with get_session() as session:
