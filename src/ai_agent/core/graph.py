@@ -14,7 +14,10 @@ from ai_agent.config.settings import settings, BASE_DIR
 from ai_agent.modules.llm.factory import get_llm
 from ai_agent.modules.memory.auto_memory import load_auto_memory
 from ai_agent.modules.skill.loader import get_skills_summary
-from ai_agent.modules.tool.tools import get_current_time, calculator, web_search, send_email, make_search_tool, get_skill_guide
+from ai_agent.modules.tool.tools import (
+    get_current_time, calculator, web_search, send_email,
+    make_search_tool, get_skill_guide, deep_research, code_interpreter,
+)
 
 SENSITIVE_TOOLS = {"send_email"}
 
@@ -31,11 +34,7 @@ def _load_agents_md() -> str:
 
 
 def _build_system_prompt() -> str:
-    """Compose system prompt from three layers:
-    1. AGENTS.md  — static harness rules
-    2. Skills registry — what skills the agent can load on demand
-    3. Auto Memory — dynamic cross-session learnings
-    """
+    """AGENTS.md + skills registry + auto memory."""
     parts = [_load_agents_md()]
     skills = get_skills_summary()
     if skills:
@@ -48,7 +47,11 @@ def _build_system_prompt() -> str:
 
 async def create_graph(retriever):
     search_tool = make_search_tool(retriever)
-    safe_tools = [get_current_time, calculator, web_search, search_tool, get_skill_guide]
+    safe_tools = [
+        get_current_time, calculator, web_search,
+        search_tool, get_skill_guide,
+        deep_research, code_interpreter,  # 新增：深度研究 + 代码解释器
+    ]
     sensitive_tools = [send_email]
     all_tools = safe_tools + sensitive_tools
 
@@ -56,7 +59,6 @@ async def create_graph(retriever):
 
     def llm_node(state: AgentState):
         messages = list(state["messages"])
-        # Re-read at conversation start: picks up latest auto-memory without restart
         if not any(isinstance(m, SystemMessage) for m in messages):
             prompt = _build_system_prompt()
             if prompt:
@@ -67,12 +69,12 @@ async def create_graph(retriever):
     def should_continue(state: AgentState):
         last_message = state["messages"][-1]
 
-        # 护栏1: 最多调用5次工具
+        # 护栏1: 最多调用8次工具（提高上限以支持 deep_research + code 多步任务）
         tool_call_count = sum(
             1 for msg in state["messages"]
             if hasattr(msg, "tool_calls") and msg.tool_calls
         )
-        if tool_call_count >= 5:
+        if tool_call_count >= 8:
             return END
 
         # 护栏2: 同一工具+参数重复3次 → 结构性终止

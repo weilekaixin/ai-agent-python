@@ -5,6 +5,8 @@ from langchain_core.tools import tool
 from ai_agent.config.settings import settings
 from ai_agent.utils.email_sender import send_email as _send_email
 from ai_agent.utils.scraper import scrape_search
+from ai_agent.modules.tool.code_exec import code_interpreter
+from ai_agent.modules.tool.research import deep_research
 
 
 @tool
@@ -71,7 +73,7 @@ def make_search_tool(retriever):
     """用闭包注入 retriever，创建知识库检索工具"""
     @tool
     def search_knowledge_base(query: str) -> str:
-        """当用户询问公司内部信息、政策、规定、员工手册、内部文档相关内容时，使用此工具检索知识库"""
+        """当用户询问公司内部信息、政策、规定、内部文档相关内容时，使用此工具检索知识库"""
         try:
             docs = retriever.invoke(query)
             if not docs:
@@ -82,4 +84,4 @@ def make_search_tool(retriever):
     return search_knowledge_base
 
 
-tools = [get_current_time, calculator, web_search, send_email, get_skill_guide]
+tools = [get_current_time, calculator, web_search, send_email, get_skill_guide, deep_research, code_interpreter]
