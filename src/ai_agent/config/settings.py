@@ -29,6 +29,8 @@ class Settings(BaseSettings):
     smtp_password: str = EMPTY_STR
     api_key: str = EMPTY_STR
     log_level: str = "INFO"
+    rate_limit_enabled: bool = True
+    history_max_pairs: int = 20  # Keep last N conversation pairs to avoid context overflow
 
     @property
     def postgres_url(self) -> str:

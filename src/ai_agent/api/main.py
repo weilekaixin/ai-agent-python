@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from ai_agent.api.middleware.auth import ApiKeyMiddleware, RequestIdMiddleware
+from ai_agent.api.middleware.rate_limit import RateLimitMiddleware
 from ai_agent.api.routes.chat import router as chat_router
 from ai_agent.api.routes.multi_agent import router as multi_agent_router
 from ai_agent.api.routes.persona import router as persona_router
@@ -52,8 +53,11 @@ app = FastAPI(
     version="1.0.0",
 )
 
+# Middleware stack (last added = outermost = executes first):
+# CORSMiddleware → RateLimitMiddleware → RequestIdMiddleware → ApiKeyMiddleware → route
 app.add_middleware(ApiKeyMiddleware)
 app.add_middleware(RequestIdMiddleware)
+app.add_middleware(RateLimitMiddleware, enabled=settings.rate_limit_enabled)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
