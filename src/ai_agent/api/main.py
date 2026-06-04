@@ -6,6 +6,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from prometheus_fastapi_instrumentator import Instrumentator
 from sqlalchemy import text
 
 from ai_agent.api.middleware.auth import ApiKeyMiddleware, RequestIdMiddleware
@@ -52,6 +53,13 @@ app = FastAPI(
     description="LangGraph-powered AI agent with memory, skills and human-in-the-loop",
     version="1.0.0",
 )
+
+# Prometheus metrics: /metrics (scraped by Prometheus, excluded from rate limiting)
+Instrumentator(
+    should_gzip=True,
+    should_instrument_requests_inprogress=True,
+    excluded_handlers=["/health", "/metrics"],
+).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # Middleware stack (last added = outermost = executes first):
 # CORSMiddleware → RateLimitMiddleware → RequestIdMiddleware → ApiKeyMiddleware → route

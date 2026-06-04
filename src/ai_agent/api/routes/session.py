@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 from pydantic import BaseModel, Field
 
 from ai_agent.api.schemas.common import fail, ok
@@ -9,7 +9,7 @@ from ai_agent.modules.db.dao import (
     clear_session_messages,
     delete_session,
     get_messages_by_session,
-    get_sessions,
+    get_sessions_paginated,
     update_session_title,
 )
 
@@ -21,17 +21,25 @@ class UpdateTitleRequest(BaseModel):
 
 
 @router.get("/sessions")
-def list_sessions():
-    """获取全部会话列表（按创建时间降序）"""
-    sessions = get_sessions()
-    return ok([
-        {
-            "session_id": s.session_id,
-            "title": s.title,
-            "created_time": s.created_time,
-        }
-        for s in sessions
-    ])
+def list_sessions(
+    page: int = Query(default=1, ge=1, description="页码，从 1 开始"),
+    size: int = Query(default=50, ge=1, le=200, description="每页条数"),
+):
+    """获取会话列表（分页，默认返回第一页 50 条）"""
+    sessions, total = get_sessions_paginated(page, size)
+    return ok({
+        "total": total,
+        "page": page,
+        "size": size,
+        "list": [
+            {
+                "session_id": s.session_id,
+                "title": s.title,
+                "created_time": s.created_time,
+            }
+            for s in sessions
+        ],
+    })
 
 
 @router.get("/sessions/{session_id}/messages")
@@ -80,7 +88,7 @@ def set_session_title(session_id: str, body: UpdateTitleRequest):
 def clear_session(session_id: str):
     """清空会话消息（保留会话记录，开始新对话）"""
     count = clear_session_messages(session_id)
-    clear_history(session_id)  # also flush Redis cache
+    clear_history(session_id)
     return ok({"session_id": session_id, "cleared": count})
 
 

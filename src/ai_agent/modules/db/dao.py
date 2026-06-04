@@ -2,6 +2,7 @@ import uuid
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import func
 from sqlmodel import select
 
 from ai_agent.modules.db.client import get_session
@@ -37,6 +38,22 @@ def get_sessions() -> list[Conversation]:
         return list(session.exec(
             select(Conversation).order_by(Conversation.created_time.desc())
         ).all())
+
+
+def get_sessions_paginated(page: int = 1, size: int = 50) -> tuple[list[Conversation], int]:
+    """分页查询会话，返回 (数据列表, 总数)"""
+    offset = max(0, (page - 1) * size)
+    with get_session() as session:
+        total = session.exec(
+            select(func.count()).select_from(Conversation)
+        ).one()
+        rows = list(session.exec(
+            select(Conversation)
+            .order_by(Conversation.created_time.desc())
+            .offset(offset)
+            .limit(size)
+        ).all())
+    return rows, int(total)
 
 
 def delete_session(session_id: str) -> None:

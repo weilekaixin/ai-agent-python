@@ -11,7 +11,7 @@ from ai_agent.modules.cache.client import get_redis_client
 
 logger = logging.getLogger(__name__)
 
-_SKIP_PATHS = {"/health", "/docs", "/openapi.json", "/redoc"}
+_SKIP_PATHS = {"/health", "/docs", "/openapi.json", "/redoc", "/metrics"}
 
 # path prefix → (max_requests, window_seconds)
 _PATH_LIMITS: dict[str, tuple[int, int]] = {

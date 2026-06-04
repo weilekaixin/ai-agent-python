@@ -12,7 +12,7 @@ from ai_agent.config.settings import settings
 REQUEST_ID: ContextVar[str] = ContextVar("request_id", default="")
 
 # 不需鉴权的路径
-_SKIP_AUTH = {"/health", "/docs", "/openapi.json", "/redoc"}
+_SKIP_AUTH = {"/health", "/docs", "/openapi.json", "/redoc", "/metrics"}
 
 
 class RequestIdMiddleware(BaseHTTPMiddleware):
