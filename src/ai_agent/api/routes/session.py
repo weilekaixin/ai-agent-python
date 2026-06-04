@@ -5,6 +5,7 @@ from typing import Optional
 
 from fastapi import APIRouter, Query
 from fastapi.responses import StreamingResponse
+from langchain_core.messages import HumanMessage
 from pydantic import BaseModel, Field
 
 from ai_agent.api.schemas.common import fail, ok
@@ -17,6 +18,7 @@ from ai_agent.modules.db.dao import (
     search_messages,
     update_session_title,
 )
+from ai_agent.modules.llm.factory import get_llm
 
 router = APIRouter()
 
@@ -126,9 +128,38 @@ def export_session_csv(session_id: str):
     )
 
 
+@router.post("/sessions/{session_id}/auto-title")
+async def auto_generate_title(session_id: str):
+    """使用 LLM 根据对话内容自动生成会话标题。
+
+    取前 4 条消息作为上下文，调用 LLM 生成 10-30 字的标题。
+    """
+    msgs = get_messages_by_session(session_id)
+    if not msgs:
+        return fail(400, "Session has no messages")
+
+    snippet = "\n".join(
+        f"{m.role}: {m.content[:300]}"
+        for m in msgs[:4]
+    )
+    llm = get_llm()
+    prompt = (
+        "根据以下对话内容，生成一个简洁的会话标题（10–30个字，中文或英文均可）。\n"
+        "只返回标题本身，不要加引号、解释或任何额外内容。\n\n"
+        f"{snippet}"
+    )
+    response = await llm.ainvoke([HumanMessage(content=prompt)])
+    title = response.content.strip()[:200]
+
+    updated = update_session_title(session_id, title)
+    if not updated:
+        return fail(404, "Session not found")
+    return ok({"session_id": session_id, "title": title})
+
+
 @router.put("/sessions/{session_id}/title")
 def set_session_title(session_id: str, body: UpdateTitleRequest):
-    """更新会话标题"""
+    """手动更新会话标题"""
     updated = update_session_title(session_id, body.title)
     if not updated:
         return fail(404, "Session not found")

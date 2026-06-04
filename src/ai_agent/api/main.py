@@ -12,6 +12,7 @@ from sqlalchemy import text
 from ai_agent.api.middleware.auth import ApiKeyMiddleware, RequestIdMiddleware
 from ai_agent.api.middleware.rate_limit import RateLimitMiddleware
 from ai_agent.api.middleware.request_size import RequestSizeMiddleware
+from ai_agent.api.middleware.response_time import ResponseTimeMiddleware
 from ai_agent.api.routes.chat import router as chat_router
 from ai_agent.api.routes.multi_agent import router as multi_agent_router
 from ai_agent.api.routes.persona import router as persona_router
@@ -24,7 +25,6 @@ from ai_agent.core.graph import create_graph
 from ai_agent.modules.db.client import init_db, engine
 from ai_agent.modules.memory.dreaming import dream
 
-# 尽早配置日志，确保所有模块的日志输出都是 JSON 格式
 setup_logging(settings.log_level)
 logger = logging.getLogger(__name__)
 
@@ -55,15 +55,17 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Prometheus metrics: /metrics (scraped by Prometheus, excluded from rate limiting)
+# Prometheus metrics: /metrics (excluded from rate limiting)
 Instrumentator(
     should_gzip=True,
     should_instrument_requests_inprogress=True,
     excluded_handlers=["/health", "/metrics"],
 ).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
-# Middleware stack (last added = outermost = executes first):
-# CORSMiddleware → RequestSizeMiddleware → RateLimitMiddleware → RequestIdMiddleware → ApiKeyMiddleware → route
+# Middleware execution order (outermost → innermost):
+# ResponseTimeMiddleware → CORSMiddleware → RequestSizeMiddleware
+# → RateLimitMiddleware → RequestIdMiddleware → ApiKeyMiddleware → route
+# Starlette: last add_middleware() call = outermost (executes first on request)
 app.add_middleware(ApiKeyMiddleware)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(RateLimitMiddleware, enabled=settings.rate_limit_enabled)
@@ -75,6 +77,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(ResponseTimeMiddleware)  # outermost: measures full pipeline latency
 
 
 @app.exception_handler(Exception)
