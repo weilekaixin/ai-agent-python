@@ -28,6 +28,8 @@ class Settings(BaseSettings):
     smtp_port: int = 587
     smtp_username: str = EMPTY_STR
     smtp_password: str = EMPTY_STR
+    # 空字符串 = 关闭鉴权（开发模式）；不为空 = 开启 API Key 鉴权
+    api_key: str = EMPTY_STR
 
     @property
     def postgres_url(self) -> str:
