@@ -11,6 +11,7 @@ from sqlalchemy import text
 
 from ai_agent.api.middleware.auth import ApiKeyMiddleware, RequestIdMiddleware
 from ai_agent.api.middleware.rate_limit import RateLimitMiddleware
+from ai_agent.api.middleware.request_size import RequestSizeMiddleware
 from ai_agent.api.routes.chat import router as chat_router
 from ai_agent.api.routes.multi_agent import router as multi_agent_router
 from ai_agent.api.routes.persona import router as persona_router
@@ -62,10 +63,11 @@ Instrumentator(
 ).instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
 
 # Middleware stack (last added = outermost = executes first):
-# CORSMiddleware → RateLimitMiddleware → RequestIdMiddleware → ApiKeyMiddleware → route
+# CORSMiddleware → RequestSizeMiddleware → RateLimitMiddleware → RequestIdMiddleware → ApiKeyMiddleware → route
 app.add_middleware(ApiKeyMiddleware)
 app.add_middleware(RequestIdMiddleware)
 app.add_middleware(RateLimitMiddleware, enabled=settings.rate_limit_enabled)
+app.add_middleware(RequestSizeMiddleware, max_kb=settings.max_request_size_kb)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],

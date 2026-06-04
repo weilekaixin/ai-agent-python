@@ -31,6 +31,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     rate_limit_enabled: bool = True
     history_max_pairs: int = 20  # Keep last N conversation pairs to avoid context overflow
+    max_request_size_kb: int = 512  # Maximum allowed Content-Length in kilobytes
 
     @property
     def postgres_url(self) -> str:
