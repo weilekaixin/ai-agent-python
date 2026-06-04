@@ -1,3 +1,4 @@
+import asyncio
 import json
 from uuid import uuid4
 
@@ -11,6 +12,7 @@ from ai_agent.core.factory import build_messages_with_history
 from ai_agent.models.constants import TEXT_EVENT_STREAM, ERROR_MESSAGE_AGENT_NOT_INIT, EMPTY_STR, AI, HUMAN
 from ai_agent.modules.cache.history import save_message_to_redis
 from ai_agent.modules.db.dao import save_message_to_db
+from ai_agent.modules.memory.auto_memory import consolidate_conversation
 from ai_agent.utils.sse import sse_format
 from ai_agent.utils.stream import token_stream
 
@@ -24,7 +26,6 @@ async def chat(query: Request, body: ChatRequest):
         return fail(status.HTTP_503_SERVICE_UNAVAILABLE, ERROR_MESSAGE_AGENT_NOT_INIT,
                     status.HTTP_503_SERVICE_UNAVAILABLE)
 
-    # 每次对话生成唯一 thread_id，与 session_id 解耦
     thread_id = str(uuid4())
     config = {"configurable": {"thread_id": thread_id}}
     messages = build_messages_with_history(body.session_id, body.message)
@@ -36,7 +37,7 @@ async def chat(query: Request, body: ChatRequest):
             yield token
 
         state = await agent.aget_state(config)
-        if state.next:  # next 不为空说明在等待人工审批
+        if state.next:
             last_message = state.values["messages"][-1]
             if hasattr(last_message, "tool_calls") and last_message.tool_calls:
                 tool_call = last_message.tool_calls[0]
@@ -45,16 +46,18 @@ async def chat(query: Request, body: ChatRequest):
                     "tool": tool_call["name"],
                     "args": tool_call["args"],
                     "tool_call_id": tool_call["id"],
-                    "thread_id": thread_id,  # 前端调 /resume 时需要带回
+                    "thread_id": thread_id,
                 }
                 yield f"__INTERRUPT__:{json.dumps(interrupt_data, ensure_ascii=False)}"
-            return  # 暂停时不保存历史，等 resume 完成后再保存
+            return
 
         full_response = EMPTY_STR.join(ai_response)
         save_message_to_redis(body.session_id, HUMAN, body.message)
         save_message_to_redis(body.session_id, AI, full_response)
         save_message_to_db(body.session_id, HUMAN, body.message)
         save_message_to_db(body.session_id, AI, full_response)
+        # 异步提取对话要点，不阻塞 SSE 流
+        asyncio.create_task(consolidate_conversation(list(state.values["messages"])))
 
     return StreamingResponse(sse_format(stream_and_save()), media_type=TEXT_EVENT_STREAM)
 
@@ -104,6 +107,7 @@ async def resume(query: Request, body: ResumeRequest):
         save_message_to_redis(body.session_id, AI, full_response)
         save_message_to_db(body.session_id, HUMAN, user_message)
         save_message_to_db(body.session_id, AI, full_response)
+        asyncio.create_task(consolidate_conversation(list(full_state.values["messages"])))
 
     async def stream_and_save_with_cleanup():
         try:

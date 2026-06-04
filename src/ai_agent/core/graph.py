@@ -12,6 +12,7 @@ from psycopg_pool import AsyncConnectionPool
 
 from ai_agent.config.settings import settings, BASE_DIR
 from ai_agent.modules.llm.factory import get_llm
+from ai_agent.modules.memory.auto_memory import load_auto_memory
 from ai_agent.modules.tool.tools import get_current_time, calculator, web_search, send_email, make_search_tool
 
 SENSITIVE_TOOLS = {"send_email"}
@@ -28,6 +29,11 @@ def _load_agents_md() -> str:
     return ""
 
 
+def _build_system_prompt() -> str:
+    """AGENTS.md (static harness) + auto_memory.md (dynamic cross-session learnings)."""
+    return _load_agents_md() + load_auto_memory()
+
+
 async def create_graph(retriever):
     search_tool = make_search_tool(retriever)
     safe_tools = [get_current_time, calculator, web_search, search_tool]
@@ -35,12 +41,14 @@ async def create_graph(retriever):
     all_tools = safe_tools + sensitive_tools
 
     llm = get_llm().bind_tools(all_tools)
-    system_prompt = _load_agents_md()
 
     def llm_node(state: AgentState):
         messages = list(state["messages"])
-        if system_prompt and not any(isinstance(m, SystemMessage) for m in messages):
-            messages = [SystemMessage(content=system_prompt)] + messages
+        # Re-read at conversation start so new auto-memory entries are picked up without restart
+        if not any(isinstance(m, SystemMessage) for m in messages):
+            prompt = _build_system_prompt()
+            if prompt:
+                messages = [SystemMessage(content=prompt)] + messages
         response = llm.invoke(messages)
         return {"messages": [response]}
 
@@ -55,7 +63,7 @@ async def create_graph(retriever):
         if tool_call_count >= 5:
             return END
 
-        # 护栏2: 同一工具+参数重复3次 → 结构性终止，防止 LLM 幻觉死循环
+        # 护栏2: 同一工具+参数重复3次 → 结构性终止
         signatures = [
             f"{tc['name']}:{json.dumps(tc.get('args', {}), sort_keys=True)}"
             for msg in state["messages"]
