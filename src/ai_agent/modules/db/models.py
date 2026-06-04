@@ -38,3 +38,16 @@ class Persona(SQLModel, table=True):
     is_active: bool = Field(default=True)
     created_time: datetime = Field(default_factory=datetime.now)
     updated_time: datetime = Field(default_factory=datetime.now)
+
+
+class MessageFeedback(SQLModel, table=True):
+    """消息反馈表（点赞 / 踩 + 可选评论，每条消息保留最新一条反馈）"""
+    __tablename__ = "message_feedback"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    feedback_id: str = Field(unique=True, index=True, max_length=36)
+    message_id: int = Field(index=True)         # soft FK to message.id
+    session_id: str = Field(index=True, max_length=36)
+    rating: int                                  # +1 thumbs-up, -1 thumbs-down
+    comment: Optional[str] = Field(default=None, max_length=1000)
+    created_time: datetime = Field(default_factory=datetime.now)

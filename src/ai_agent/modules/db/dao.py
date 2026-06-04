@@ -6,7 +6,7 @@ from sqlalchemy import func
 from sqlmodel import select
 
 from ai_agent.modules.db.client import get_session
-from ai_agent.modules.db.models import Conversation, Message, Persona
+from ai_agent.modules.db.models import Conversation, Message, MessageFeedback, Persona
 
 
 def save_message_to_db(session_id: str, role: str, content: str) -> None:
@@ -30,6 +30,14 @@ def get_messages_by_session(session_id: str) -> list[Message]:
             .where(Message.session_id == session_id)
             .order_by(Message.id)
         ).all())
+
+
+def get_message_by_id(message_id: int) -> Optional[Message]:
+    """按主键查询单条消息"""
+    with get_session() as session:
+        return session.exec(
+            select(Message).where(Message.id == message_id)
+        ).first()
 
 
 def get_sessions() -> list[Conversation]:
@@ -224,3 +232,87 @@ def delete_persona(persona_id: str) -> bool:
             return False
         session.delete(p)
     return True
+
+
+# ──────────── Message Feedback CRUD ────────────
+
+def _feedback_to_dict(f: MessageFeedback) -> dict:
+    return {
+        "id": f.id,
+        "feedback_id": f.feedback_id,
+        "message_id": f.message_id,
+        "session_id": f.session_id,
+        "rating": f.rating,
+        "comment": f.comment,
+        "created_time": f.created_time.isoformat(),
+    }
+
+
+def create_or_update_feedback(
+    message_id: int,
+    session_id: str,
+    rating: int,
+    comment: Optional[str] = None,
+) -> dict:
+    """为消息创建或更新反馈（每条消息只保留最新一条反馈）。"""
+    with get_session() as session:
+        existing = session.exec(
+            select(MessageFeedback).where(MessageFeedback.message_id == message_id)
+        ).first()
+        if existing:
+            existing.rating = rating
+            existing.comment = comment
+            existing.created_time = datetime.now()
+            session.add(existing)
+            session.flush()
+            result = _feedback_to_dict(existing)
+        else:
+            fb = MessageFeedback(
+                feedback_id=uuid.uuid4().hex,
+                message_id=message_id,
+                session_id=session_id,
+                rating=rating,
+                comment=comment,
+            )
+            session.add(fb)
+            session.flush()
+            result = _feedback_to_dict(fb)
+    return result
+
+
+def get_feedback_by_message(message_id: int) -> Optional[dict]:
+    """查询某条消息的反馈（若有）。"""
+    with get_session() as session:
+        f = session.exec(
+            select(MessageFeedback).where(MessageFeedback.message_id == message_id)
+        ).first()
+        return _feedback_to_dict(f) if f else None
+
+
+def get_feedback_by_session(session_id: str) -> list[dict]:
+    """查询某会话下所有消息的反馈列表，按时间降序。"""
+    with get_session() as session:
+        rows = list(session.exec(
+            select(MessageFeedback)
+            .where(MessageFeedback.session_id == session_id)
+            .order_by(MessageFeedback.created_time.desc())
+        ).all())
+        return [_feedback_to_dict(f) for f in rows]
+
+
+def get_feedback_stats(session_id: str) -> dict:
+    """统计某会话的反馈数据：总数、点赞、踩、好评率。"""
+    with get_session() as session:
+        rows = list(session.exec(
+            select(MessageFeedback).where(MessageFeedback.session_id == session_id)
+        ).all())
+    total = len(rows)
+    positive = sum(1 for f in rows if f.rating == 1)
+    negative = total - positive
+    return {
+        "session_id": session_id,
+        "total": total,
+        "positive": positive,
+        "negative": negative,
+        "positive_rate": round(positive / total, 4) if total > 0 else 0.0,
+    }
