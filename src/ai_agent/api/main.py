@@ -10,6 +10,7 @@ from sqlalchemy import text
 
 from ai_agent.api.middleware.auth import ApiKeyMiddleware, RequestIdMiddleware
 from ai_agent.api.routes.chat import router as chat_router
+from ai_agent.api.routes.multi_agent import router as multi_agent_router
 from ai_agent.api.routes.persona import router as persona_router
 from ai_agent.api.routes.session import router as session_router
 from ai_agent.api.routes.structured import router as structured_router
@@ -117,3 +118,4 @@ app.include_router(chat_router, prefix="/api")
 app.include_router(session_router, prefix="/api")
 app.include_router(persona_router, prefix="/api")
 app.include_router(structured_router, prefix="/api")
+app.include_router(multi_agent_router, prefix="/api")
