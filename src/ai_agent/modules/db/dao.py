@@ -54,6 +54,19 @@ def delete_session(session_id: str) -> None:
             session.delete(conv)
 
 
+def update_session_title(session_id: str, title: str) -> bool:
+    """更新会话标题，返回 False 表示会话不存在"""
+    with get_session() as session:
+        conv = session.exec(
+            select(Conversation).where(Conversation.session_id == session_id)
+        ).first()
+        if conv is None:
+            return False
+        conv.title = title[:200]
+        session.add(conv)
+    return True
+
+
 # ──────────── Persona CRUD ────────────
 
 def _persona_to_dict(p: Persona) -> dict:
