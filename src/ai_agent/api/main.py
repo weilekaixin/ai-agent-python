@@ -3,17 +3,17 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from ai_agent.api.routes.chat import router
-from ai_agent.core.factory import create_agent
+from ai_agent.core.factory import create_agent_app, create_rag_retriever
+from ai_agent.modules.db.client import init_db
 
 
 @asynccontextmanager
 async def lifespan(application: FastAPI):
-    # 启动：初始化 Agent（加载模型、索引知识库）
-    print("[启动] 加载 Embedding 模型...")
-    application.state.agent = create_agent()
-    print("[启动] Agent 就绪，监听端口 8000")
+    init_db()
+    application.state.agent = create_agent_app()
+    application.state.retriever = create_rag_retriever("doc/sample.txt")
+    print("[启动] Agent 就绪")
     yield
-    # 关闭：清理资源
     print("[关闭] 服务停止")
 
 

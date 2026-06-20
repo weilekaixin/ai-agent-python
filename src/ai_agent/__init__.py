@@ -1,3 +1,3 @@
-# ai_agent — 多模块 Agent 能力底座
-# 分层架构：api → core → modules/{llm,rag,tool,memory}
-__version__ = "0.1.0"
+# ai_agent — v1.0 LangChain 重写
+# 分层架构：api → core → modules/{llm,tool,memory,rag} → models
+__version__ = "1.0.0-langchain"

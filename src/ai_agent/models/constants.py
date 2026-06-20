@@ -7,25 +7,31 @@ ENV_FILE = "env_file"
 ENV_FILE_ENCODING = "env_file_encoding"
 
 # 模型默认值
-DEEPSEEK_MODEL = "deepseek-chat"
+DEEPSEEK_MODEL = "openai:deepseek-chat"
 DEEPSEEK_BASE_URL = "https://api.deepseek.com/v1"
 
 # 角色
 USER_ROLE = "user"
 ASSISTANT_ROLE = "assistant"
 TOOL_ROLE = "tool"
+AI = "ai"
+HUMAN = "human"
 
 # 字符串常量
 EMPTY_STR = ""
+ROOT = "root"
 # 数字常量
-TEN_NUM = 10
+NUM_0 = 0
+NUM_10 = 10
 
 # 业务字段
+MESSAGES = "messages"
+SUCCESS = "success"
 NAME = "name"
 ARGS = "args"
 ID = "id"
 TOOL_CALL_ID = "tool_call_id"
+TEXT_EVENT_STREAM = "text/event-stream"
+MODELS = "models"
 
-# 系统提示词
-RAG_SYSTEM_PROMPT = "基于以下资料回答问题。如果资料中没有相关信息，你可以根据自己的知识回答："
-QUESTION = "\n问题："
+ERROR_MESSAGE_AGENT_NOT_INIT = "Agent未初始化！"
